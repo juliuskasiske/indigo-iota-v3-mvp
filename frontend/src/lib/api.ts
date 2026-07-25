@@ -964,6 +964,18 @@ export interface SwarmTree {
   running: boolean;
 }
 
+export interface ObjectivePriority {
+  id: string;
+  label: string;
+  bucket: string;
+  rank: number;
+}
+
+export interface Objective {
+  priorities: ObjectivePriority[];
+  context: string;
+}
+
 // --- endpoints --------------------------------------------------------------
 
 export const api = {
@@ -974,6 +986,13 @@ export const api = {
   swarmTree: () => request<SwarmTree>("/api/swarm/tree"),
   swarmStart: () => request<SwarmStatus>("/api/swarm/start", { method: "POST" }),
   swarmStop: () => request<SwarmStatus>("/api/swarm/stop", { method: "POST" }),
+
+  objective: () => request<Objective>("/api/objective"),
+  saveObjective: (body: Objective) =>
+    request<Objective>("/api/objective", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 
   devLogin: (slug: string, email: string) =>
     request<{ ok: boolean; org: string; role: string; email: string }>(

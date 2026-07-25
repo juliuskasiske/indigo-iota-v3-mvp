@@ -401,6 +401,48 @@ async def swarm_stop(user: dict = Depends(require_role("admin"))) -> dict:
     return await swarm.stop(_tenant_db_for(user["org_id"]))
 
 
+# --- Objective function (Objectives tab) ------------------------------------
+# The ranked balanced-scorecard levers + free-text context the agents optimize
+# for. The swarm reads this to steer hypothesis generation, sizing, and judging.
+
+class ObjectiveBody(BaseModel):
+    priorities: list[dict] = []
+    context: str = ""
+
+
+@app.get("/api/objective")
+def get_objective(user: dict = Depends(current_user)) -> dict:
+    from src.db.connection import get_tenant_connection
+
+    db_name = _tenant_db_for(user["org_id"])
+    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
+        cur.execute("SELECT priorities, context FROM objective_function WHERE id = 1;")
+        row = cur.fetchone()
+    if not row:
+        return {"priorities": [], "context": ""}
+    return {"priorities": row[0] or [], "context": row[1] or ""}
+
+
+@app.put("/api/objective")
+def put_objective(
+    body: ObjectiveBody, user: dict = Depends(require_role("admin"))
+) -> dict:
+    from psycopg.types.json import Json
+
+    from src.db.connection import get_tenant_connection
+
+    db_name = _tenant_db_for(user["org_id"])
+    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO objective_function (id, priorities, context, updated_at) "
+            "VALUES (1, %s, %s, now()) "
+            "ON CONFLICT (id) DO UPDATE SET "
+            "priorities = EXCLUDED.priorities, context = EXCLUDED.context, updated_at = now();",
+            (Json(body.priorities), body.context),
+        )
+    return {"ok": True, "priorities": body.priorities, "context": body.context}
+
+
 def _money(value) -> str:
     """Render a Decimal cost as a stable string (never float — it's money)."""
     return str(value)

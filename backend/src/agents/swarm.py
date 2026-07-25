@@ -140,13 +140,35 @@ def _llm(system: str, user: str, max_tokens: int = 600) -> str:
     return resp.choices[0].message.content or ""
 
 
-def _parse(raw: str, default):
-    """Best-effort: pull the first JSON object out of a model response."""
+def _extract(raw: str):
+    """Best-effort parse of a model response into JSON (object or array).
+
+    Handles ```json fences and leading/trailing prose. Returns None on failure.
+    """
+    if not raw:
+        return None
+    s = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.S).strip()
     try:
-        m = re.search(r"\{.*\}", raw, re.S)
-        return json.loads(m.group(0)) if m else default
+        return json.loads(s)
     except Exception:
-        return default
+        pass
+    m = re.search(r"(\{.*\}|\[.*\])", s, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except Exception:
+        return None
+
+
+def _first_list(data):
+    """The list payload from a model response, whether it came back as a bare
+    array, under a known key, or under any other key."""
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        return next((v for v in data.values() if isinstance(v, list)), None)
+    return None
 
 
 # --- brain reads (sync; called via run_in_executor) -------------------------
@@ -185,27 +207,56 @@ def _size_heuristic(idx: int, n_facts: int) -> str:
     return f"€{0.4 + (idx % 5) * 0.3 + n_facts * 0.5:.1f}M (est.)"
 
 
+def _read_objective(db_name: str) -> dict | None:
+    """The objective function set on the Objectives tab, or None if unset."""
+    try:
+        with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
+            cur.execute("SELECT priorities, context FROM objective_function WHERE id = 1;")
+            row = cur.fetchone()
+    except Exception:
+        return None
+    if not row:
+        return None
+    return {"priorities": row[0] or [], "context": row[1] or ""}
+
+
+def _format_objective(obj: dict | None) -> str:
+    """Turn the stored objective into a prompt-ready instruction string."""
+    if not obj:
+        return DEFAULT_OBJECTIVE
+    labels = [p.get("label") for p in obj.get("priorities", []) if p.get("label")]
+    parts = []
+    if labels:
+        ranked = "; ".join(f"{i + 1}. {lab}" for i, lab in enumerate(labels))
+        parts.append(f"Optimize for, in priority order (most important first): {ranked}.")
+    ctx = (obj.get("context") or "").strip()
+    if ctx:
+        parts.append(f"Client context to respect: {ctx}")
+    return " ".join(parts) if parts else DEFAULT_OBJECTIVE
+
+
 # --- agent roles (LLM with heuristic fallback) ------------------------------
 
 def _gen_hypotheses(org: str, brain: dict, objective: str) -> list[dict]:
     if _llm_on():
-        try:
-            user = (
-                f"Organization: {org}\nObjective function: {objective}\n\n"
-                f"Entities in the brain:\n" + "\n".join(brain["entities"][:40]) +
-                f"\n\nEvidence excerpts:\n{_evidence_blob(brain['evidence'])}\n\n"
-                "Propose the hypotheses."
-            )
-            data = _parse(_llm(P_HYPO, user, 700), {})
-            hs = data.get("hypotheses") if isinstance(data, dict) else None
+        user = (
+            f"Organization: {org}\nObjective function: {objective}\n\n"
+            f"Entities in the brain:\n" + "\n".join(brain["entities"][:40]) +
+            f"\n\nEvidence excerpts:\n{_evidence_blob(brain['evidence'])}\n\n"
+            "Propose the hypotheses that best serve the objective function above."
+        )
+        for _ in range(2):  # one retry — the model's JSON is occasionally flaky
+            try:
+                hs = _first_list(_extract(_llm(P_HYPO, user, 800)))
+            except Exception:
+                log.exception("hypothesis LLM failed; falling back")
+                break
             out = [
                 {"label": (h.get("label") or "").strip(), "rationale": (h.get("rationale") or "").strip()}
-                for h in (hs or []) if (h.get("label") or "").strip()
+                for h in (hs or []) if isinstance(h, dict) and (h.get("label") or "").strip()
             ]
             if out:
                 return out[:4]
-        except Exception:
-            log.exception("hypothesis LLM failed; falling back")
     return [
         {"label": f"Value is leaking around {c}", "rationale": "Derived from the brain (LLM unavailable)."}
         for c in brain["companies"]
@@ -215,8 +266,8 @@ def _gen_hypotheses(org: str, brain: dict, objective: str) -> list[dict]:
 def _plan(hypothesis: str, objective: str) -> list[str]:
     if _llm_on():
         try:
-            data = _parse(_llm(P_PLAN, f"Objective: {objective}\nHypothesis: {hypothesis}", 400), {})
-            steps = [s.strip() for s in (data.get("steps") or []) if isinstance(s, str) and s.strip()]
+            raw = _first_list(_extract(_llm(P_PLAN, f"Objective: {objective}\nHypothesis: {hypothesis}", 400)))
+            steps = [s.strip() for s in (raw or []) if isinstance(s, str) and s.strip()]
             if steps:
                 return steps[:5]
         except Exception:
@@ -235,7 +286,7 @@ def _validate(hypothesis: str, brain: dict) -> dict:
                 f"Hypothesis: {hypothesis}\n\nEvidence available in the brain:\n"
                 f"{_evidence_blob(brain['evidence'])}"
             )
-            data = _parse(_llm(P_VALID, user, 700), {})
+            data = _extract(_llm(P_VALID, user, 700)) or {}
             if isinstance(data, dict) and "supported" in data:
                 facts = [
                     {"text": (f.get("text") or "").strip(), "source": (f.get("source") or "brain").strip()}
@@ -258,7 +309,7 @@ def _size(hypothesis: str, facts: list[dict], objective: str, idx: int) -> dict:
         try:
             fblob = "\n".join(f"- ({f['source']}) {f['text']}" for f in facts) or "(none)"
             user = f"Objective: {objective}\nHypothesis: {hypothesis}\nSupporting facts:\n{fblob}"
-            data = _parse(_llm(P_SIZE, user, 200), {})
+            data = _extract(_llm(P_SIZE, user, 200)) or {}
             metric = (data.get("metric") or "").strip() if isinstance(data, dict) else ""
             if metric:
                 return {"metric": metric, "basis": (data.get("basis") or "").strip()}
@@ -277,7 +328,7 @@ def _judge(hypothesis: str, validation: dict, sizing: dict) -> dict:
                 f"facts={[f['text'] for f in validation.get('facts', [])]}\n"
                 f"Sizer: {sizing.get('metric')} — {sizing.get('basis')}"
             )
-            data = _parse(_llm(P_JUDGE, user, 200), {})
+            data = _extract(_llm(P_JUDGE, user, 200)) or {}
             verdict = (data.get("verdict") or "").strip() if isinstance(data, dict) else ""
             if verdict in ("supported", "needs_evidence", "discarded"):
                 return {"verdict": verdict, "note": (data.get("note") or "").strip()}
@@ -330,11 +381,13 @@ async def _loop(db_name: str, run_id: int, org: str) -> None:
     async def call(fn, *a):
         return await loop.run_in_executor(None, partial(fn, *a))
 
-    objective = DEFAULT_OBJECTIVE
     try:
         mode = "LLM agents" if _llm_on() else "heuristic agents (no LLM key)"
         await emit("system", "log", f"Swarm started for {org} · {mode}. Reading the Context Engine…")
         await asyncio.sleep(0.8)
+
+        objective = _format_objective(await call(_read_objective, db_name))
+        await emit("system", "log", f"Objective function → {objective}")
 
         brain = await call(_read_brain, db_name)
         root = "root"

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ArrowUp, ArrowDown, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Check, ArrowUp, ArrowDown, X, Loader2, Save } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Align, step 1: the objective function. The consultant picks the value levers
@@ -93,17 +94,59 @@ function StepHead({
   );
 }
 
-export function AlignPanel() {
+export function AlignPanel({
+  onAuthError,
+}: {
+  onAuthError?: (e: ApiError) => void;
+}) {
   // `selected` is ordered — the order IS the ranking (index 0 = most relevant).
   const [selected, setSelected] = useState<string[]>(DEFAULT_SELECTED);
   const [context, setContext] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [savedAt, setSavedAt] = useState(false);
 
-  const toggle = (id: string) =>
+  // Load the saved objective function on mount.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const obj = await api.objective();
+        if (!alive) return;
+        const ranked = [...obj.priorities]
+          .sort((a, b) => a.rank - b.rank)
+          .map((p) => p.id)
+          .filter((id) => id in ALL_ITEMS);
+        if (ranked.length) setSelected(ranked);
+        setContext(obj.context ?? "");
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          onAuthError?.(e);
+        }
+        // otherwise keep the defaults
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [onAuthError]);
+
+  const touch = () => {
+    setDirty(true);
+    setSavedAt(false);
+  };
+
+  const toggle = (id: string) => {
     setSelected((s) =>
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
     );
+    touch();
+  };
 
-  const move = (i: number, dir: -1 | 1) =>
+  const move = (i: number, dir: -1 | 1) => {
     setSelected((s) => {
       const j = i + dir;
       if (j < 0 || j >= s.length) return s;
@@ -111,9 +154,61 @@ export function AlignPanel() {
       [c[i], c[j]] = [c[j], c[i]];
       return c;
     });
+    touch();
+  };
+
+  const save = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const priorities = selected.map((id, i) => ({
+        id,
+        label: ALL_ITEMS[id].label,
+        bucket: ALL_ITEMS[id].bucket,
+        rank: i,
+      }));
+      await api.saveObjective({ priorities, context });
+      setDirty(false);
+      setSavedAt(true);
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        onAuthError?.(e);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, selected, context, onAuthError]);
 
   return (
     <div className="space-y-10">
+      {/* Save bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background-elevated/60 px-4 py-3">
+        <p className="text-sm text-foreground-muted">
+          This is the compass the agent swarm optimizes for. Save to apply it to
+          the next run.
+        </p>
+        <div className="flex items-center gap-3">
+          {savedAt && !dirty && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+              Saved
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving || !loaded || !dirty}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {saving ? "Saving…" : "Save objective"}
+          </button>
+        </div>
+      </div>
+
       {/* Step 1 — the objective function */}
       <section>
         <StepHead
@@ -232,7 +327,10 @@ export function AlignPanel() {
         />
         <textarea
           value={context}
-          onChange={(e) => setContext(e.target.value)}
+          onChange={(e) => {
+            setContext(e.target.value);
+            touch();
+          }}
           rows={5}
           placeholder="e.g. Protect the Alexandria relationship, they're strategic. Don't touch headcount in Ops. We care more about margin than top-line this year."
           className="w-full resize-y rounded-xl border border-border bg-background-elevated/60 p-3.5 text-sm text-foreground placeholder:text-foreground-subtle focus:border-accent focus:outline-none"

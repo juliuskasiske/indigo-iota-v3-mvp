@@ -585,7 +585,7 @@ export function AdminDashboard({
 
           {/* ---- Home turf: the five steps ---- */}
           <TabsContent value="align" className="mt-0">
-            <AlignPanel />
+            <AlignPanel onAuthError={onAuthError} />
           </TabsContent>
 
           <TabsContent value="context" className="mt-0">
