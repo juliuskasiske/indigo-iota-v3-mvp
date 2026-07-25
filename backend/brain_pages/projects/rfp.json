@@ -1,0 +1,22 @@
+{
+  "frontmatter": {
+    "type": "project",
+    "name": "RFP",
+    "status": "scoping",
+    "tags": []
+  },
+  "description": "The RFP project targets ACCHCO’s aging straddle‑carrier fleet and severe yard congestion during peak season, proposing a three‑phase approach of diagnostics, redesign, and implementation support. Felix Kasiske will lead the modeling effort and prepare the project plan.",
+  "timeline": [
+    {
+      "date": "2026-03-04",
+      "entry": "The RFP identified ACCHCO's primary constraints as an aging straddle-carrier fleet and severe yard congestion during peak season."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "has_client",
+      "object": "ACCHCO",
+      "object_type": "company"
+    }
+  ]
+}

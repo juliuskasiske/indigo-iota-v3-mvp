@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2 · Architecture — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html" class="active">2 · Architecture</a>
+    <a href="03-data-model.html">3 · Data model</a>
+    <a href="04-frontend-pages.html">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
+    <a href="08-transformers.html">8 · Transformers</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 2</p>
+  <h1>The architecture</h1>
+  <p class="lead">Five boxes. Three of them we built and run ourselves; two are outside services we talk to.
+  Once you can name these five and the arrows between them, you understand the system's skeleton.</p>
+
+  <h2>The whole system on one page</h2>
+  <div class="mermaid">
+flowchart TB
+  user([👤 User in a web browser])
+  mcpc([🔌 AI assistant<br/>Claude / ChatGPT])
+  subgraph ours["Our system (runs in Docker containers)"]
+    direction TB
+    web["🌐 Web server (Caddy)<br/>serves the website +<br/>forwards /api, /auth, /mcp"]
+    api["⚙️ Backend (FastAPI, Python)<br/>all the real logic + rules"]
+    subgraph dbs["🗄️ PostgreSQL databases"]
+      control[("Control plane<br/>iota_control")]
+      t1[("Brain: customer A<br/>iota_tenant_acme")]
+      t2[("Brain: customer B<br/>iota_tenant_…")]
+    end
+  end
+  llm["🤖 LLMBase<br/>(EU-hosted AI, writes answers)"]
+  ms["✉️ Microsoft 365<br/>(Graph mail + Entra login)"]
+  imap["📥 IMAP mail host<br/>(customers not on Microsoft)"]
+
+  user -->|clicks, sees pages| web
+  mcpc -->|"/mcp · OAuth + tools"| web
+  web -->|"/api/*, /auth/*"| api
+  web -->|"/mcp"| api
+  api --> control
+  api --> t1
+  api --> t2
+  api -->|"asks the AI"| llm
+  api -->|"reads mail / logs people in"| ms
+  api -->|"reads mail (IMAP)"| imap
+  </div>
+
+  <h2>The five boxes, one by one</h2>
+
+  <h3>1 · The web server <span class="small">(Caddy — the <code>web</code> container)</span></h3>
+  <p>The browser only ever talks to this one address. Caddy does two jobs at once: it hands the browser the
+  website files (HTML/JavaScript), and it acts as a <strong>reverse proxy</strong> — any request whose
+  address starts with <code>/api/</code> or <code>/auth/</code> is quietly forwarded to the backend. Because
+  the website and the API appear to live at the <em>same address</em> ("same origin"), the login cookie is
+  sent automatically and there's no complicated cross-site setup.</p>
+  <div class="callout analogy">Caddy is the building's <strong>front desk</strong>. Guests only ever speak to
+  the desk; the desk either hands them a brochure (the website) or phones the right department (the backend)
+  on their behalf.</div>
+
+  <h3>2 · The backend <span class="small">(FastAPI, Python — the <code>api</code> container)</span></h3>
+  <p>This is the brain of the operation in the engineering sense: it checks who you are, enforces what you're
+  allowed to do, reads and writes the databases, runs the ingestion pipeline (Capture → Triage → Comprehend → Index), talks to the AI, and meters
+  the cost. Everything trustworthy happens here. It's the <code>backend/src/</code> folder.</p>
+
+  <h3>3 · The databases <span class="small">(PostgreSQL — the <code>db</code> container)</span></h3>
+  <p>One Postgres server holds many databases. The <strong>control plane</strong> (<code>iota_control</code>)
+  is the shared directory + billing ledger. Then there is <strong>one brain database per customer</strong>
+  (<code>iota_tenant_acme</code>, …), each holding only that customer's knowledge. (A legacy single-customer
+  brain called <code>iota_brain</code> still exists for the cred-free local demo.)</p>
+  <div class="callout">This separation is the product's central safety promise: customer A's data physically
+  lives in a different database from customer B's. <a href="03-data-model.html">Chapter 3</a> opens both up.</div>
+
+  <h3>4 · LLMBase <span class="small">(outside service)</span></h3>
+  <p>The EU-hosted, OpenAI-compatible AI endpoint. The backend sends it text and gets back text — to comprehend
+  an email into entities, or to write a cited answer. It's the place the <em>backend itself</em> sends data to a
+  third party, chosen to keep that processing inside the EU. (One other route exists, but only at a user's own
+  request: if they connect an MCP client, their brain answers flow out to <strong>their</strong> assistant —
+  Claude or ChatGPT — see <a href="07-mcp.html">Chapter 7</a>.)</p>
+
+  <h3>5 · The customer's mail &amp; identity <span class="small">(Microsoft, or IMAP + native login)</span></h3>
+  <p>For a Microsoft customer this is their own <strong>Microsoft 365</strong>: <strong>Entra</strong> handles
+  login (staff sign in with their work account) and <strong>Graph</strong> is the door through which Iota
+  reads the mailbox it's been granted — both require the customer to grant permission first.</p>
+  <p>But Microsoft isn't required. A customer on any other mail host connects their mailbox over plain
+  <strong>IMAP</strong> instead (an app password, stored encrypted), and their staff sign in
+  <strong>natively</strong> — email + password + an authenticator app — with no outside identity service at
+  all. So box 5 is really &ldquo;where mail and logins come from,&rdquo; and for a non-Microsoft customer the
+  mail half is the IMAP host while the login half lives entirely inside our own control plane.
+  <a href="05-flows.html">Chapter 5</a> walks both sign-in paths.</p>
+
+  <h2>Where does each thing actually run?</h2>
+  <table>
+    <tr><th>Piece</th><th>Language / tool</th><th>Runs as</th><th>Repo folder</th></tr>
+    <tr><td>Website (the face)</td><td>TypeScript · Next.js/React</td><td><span class="pill mock">web container</span></td><td><code>frontend/</code></td></tr>
+    <tr><td>Backend (the logic)</td><td>Python · FastAPI</td><td><span class="pill live">api container</span></td><td><code>backend/src/</code></td></tr>
+    <tr><td>Databases</td><td>PostgreSQL + pgvector</td><td><span class="pill db">db container</span></td><td><code>backend/migrations/</code></td></tr>
+    <tr><td>Run recipes</td><td>Docker Compose · Caddy</td><td>config files</td><td><code>infra/</code></td></tr>
+  </table>
+
+  <h2>Two ways the same code runs</h2>
+  <p>The exact same backend code runs in two modes, which is why you'll see two sets of Docker files in
+  <code>infra/</code>:</p>
+  <ul>
+    <li><span class="pill live">local</span> <code>infra/local/</code> — a faithful copy of production on your
+    laptop at <code>http://localhost:8080</code>, used to preview changes. (Every screenshot in
+    <a href="04-frontend-pages.html">Chapter 4</a> was taken here.)</li>
+    <li><span class="pill db">prod</span> <code>infra/prod/</code> — the real server, with HTTPS and real
+    customer credentials.</li>
+  </ul>
+
+  <h2>Two front doors into the backend</h2>
+  <p>Most traffic comes through the website — a <em>person</em> in a browser, carrying a login cookie. But the
+  backend exposes a second door at <code>/mcp</code>: an <strong>MCP server</strong>
+  (<code>backend/src/mcp_server.py</code>) that lets an AI assistant — <strong>Claude or ChatGPT</strong> —
+  use a customer&apos;s brain as a set of tools. That caller is a <em>program</em>, not a browser, so it
+  proves itself with a <strong>bearer token</strong> instead of a cookie, obtained through our own OAuth
+  flow, and is scoped to one workspace, read-only. Same data and same backend; different doorway and
+  different proof of identity. <a href="07-mcp.html">Chapter 7</a> is the whole story.</p>
+
+  <div class="pager">
+    <a href="01-concepts.html">← Concepts</a>
+    <a class="next" href="03-data-model.html">Next: The data model →</a>
+  </div>
+</main>
+
+<script src="mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose',
+  themeVariables: { primaryColor:'#ffffff', primaryTextColor:'#0f0f0f', primaryBorderColor:'#3812f3',
+    lineColor:'#7159f6', secondaryColor:'#ece9ff', tertiaryColor:'#f0f0ec',
+    fontFamily:'Albert Sans, ui-sans-serif, system-ui, sans-serif', fontSize:'14px' }});
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "frontmatter": {
+    "type": "company",
+    "name": "ACCHCO",
+    "sector": null,
+    "location": null,
+    "relationship": "client",
+    "tags": []
+  },
+  "description": "ACCHCO is a company that issued a request for proposal (RFP) and identifies its primary operational challenges as an aging straddle‑carrier fleet and severe yard congestion during peak seasons. These constraints are the focus of the proposed diagnostics, redesign,",
+  "timeline": [
+    {
+      "date": "2026-03-04",
+      "entry": "ACCHCO faces an aging straddle-carrier fleet and severe yard congestion during peak season, as identified in the RFP."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "ACCHCO's main constraints are an aging straddle-carrier fleet and severe yard congestion during peak season."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "During the Alexandria kickoff, Phase 1 diagnostics began with Yusuf granting full access to ACCHCO’s terminal operating system data, which showed yard utilization peaking at 94%—well above the 75% best‑practice threshold—as Felix started building a simulation model."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "During a kickoff meeting in Alexandria, RPX Optimization began Phase 1 diagnostics of ACCHCO, gaining full access to its terminal operating system data and identifying that ACCHCO’s yard utilization peaks at 94%, well above the 75% best‑practice threshold."
+    }
+  ],
+  "relationships": []
+}

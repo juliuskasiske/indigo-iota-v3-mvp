@@ -1,0 +1,12 @@
+.env
+.venv
+.claude/
+.DS_Store
+data/
+__pycache__/
+*.pyc
+
+# Connector private keys / certs — must NEVER be committed.
+secrets/
+*.key
+*.pem

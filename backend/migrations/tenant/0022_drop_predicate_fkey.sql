@@ -1,0 +1,19 @@
+-- 0022_drop_predicate_fkey.sql
+-- ---------------------------------------------------------------------------
+-- Make relationship predicates OPEN at the database level.
+--
+-- 0008 added relationships_predicate_fkey: relationships.predicate had to be a
+-- key present in relationship_types. That matched the old closed-vocabulary
+-- design. The open-predicate refactor then made predicates free-form — the
+-- RelationshipAgent invents a snake_case predicate, the PredicateNormalizerAgent
+-- collapses synonyms, and structural edges write 'communicated_with' directly —
+-- and graph_sync dropped its ontology gate to match. But this FK was never
+-- dropped, so EVERY relationship insert (every open predicate, and the
+-- header-grounded 'communicated_with' edge) failed with a ForeignKeyViolation,
+-- which aborted the whole email. Net effect: zero relationships ever written.
+--
+-- Drop the constraint so the predicate column is free text, exactly as the code
+-- now expects. relationship_types stays as a seed/vocabulary reference, but it no
+-- longer gates what can be stored. Idempotent (IF EXISTS).
+-- ---------------------------------------------------------------------------
+ALTER TABLE relationships DROP CONSTRAINT IF EXISTS relationships_predicate_fkey;

@@ -1,0 +1,12 @@
+-- 0020_captured_sender_name.sql
+-- ---------------------------------------------------------------------------
+-- Keep the sender's DISPLAY NAME alongside its address on captured_events.
+--
+-- Capture stored only the address (captured_events.sender). To make the sender
+-- a first-class entity in the brain — "Michael Dempsey", not
+-- "mdempsey@rpxoptimization.com" — comprehend needs the human name. The
+-- connectors have it (Graph's from.emailAddress.name, IMAP's From display part);
+-- this column carries it through. Nullable: older rows + senders with no display
+-- name fall back to the address at comprehend time.
+-- ---------------------------------------------------------------------------
+ALTER TABLE captured_events ADD COLUMN IF NOT EXISTS sender_name TEXT;

@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9 · Comprehend walkthrough — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ============================================================================
+   Page-specific: the animated comprehend "pipeline player" + graph draw.
+   Self-contained so it never touches the shared stylesheet.
+   ========================================================================== */
+
+/* email card */
+.email {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  margin: 18px 0; overflow: hidden;
+}
+.email .hdr {
+  font-family: var(--mono); font-size: 13px; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); background: #faf9f5;
+}
+.email .hdr .k { color: var(--subtle); display: inline-block; width: 64px; }
+.email .hdr .v { color: var(--ink); }
+.email .body { padding: 14px 16px; font-size: 15px; white-space: pre-wrap; line-height: 1.6; }
+.lang { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  padding: 1px 7px; border-radius: 999px; background: rgba(207,127,16,0.12); color: var(--warning);
+  vertical-align: middle; margin-left: 8px; }
+.lang.en { background: rgba(28,138,82,0.13); color: var(--success); }
+
+/* ---- pipeline player ---- */
+.player {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+  padding: 18px; margin: 22px 0;
+}
+.player-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.playbtn {
+  font-family: var(--sans); font-weight: 600; font-size: 14px; cursor: pointer;
+  background: var(--indigo); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 18px; transition: background .15s, transform .1s;
+}
+.playbtn:hover { background: var(--indigo-soft); }
+.playbtn:active { transform: translateY(1px); }
+.playbtn:disabled { opacity: .5; cursor: default; }
+.player-hint { font-family: var(--mono); font-size: 12px; color: var(--subtle); }
+
+.track { position: relative; display: flex; gap: 0; margin: 6px 0 4px; }
+.track::before {
+  content: ""; position: absolute; left: 22px; right: 22px; top: 17px; height: 2px;
+  background: var(--border); z-index: 0;
+}
+.track .fill {
+  position: absolute; left: 22px; top: 17px; height: 2px; width: 0;
+  background: var(--indigo); z-index: 1; transition: width .5s ease;
+}
+.stage {
+  position: relative; z-index: 2; flex: 1; text-align: center; cursor: pointer;
+  background: none; border: none; font-family: inherit;
+}
+.stage .dot {
+  width: 34px; height: 34px; border-radius: 999px; margin: 0 auto 7px;
+  display: grid; place-items: center; background: var(--card);
+  border: 2px solid var(--border); color: var(--subtle);
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  transition: border-color .2s, color .2s, background .2s, box-shadow .2s;
+}
+.stage .lbl { font-family: var(--mono); font-size: 10.5px; color: var(--muted); line-height: 1.25;
+  display: block; }
+.stage.active .dot {
+  border-color: var(--indigo); color: var(--indigo); background: var(--indigo-tint);
+  box-shadow: 0 0 0 5px var(--indigo-tint); animation: pulse 1s ease infinite;
+}
+.stage.done .dot { border-color: var(--indigo); background: var(--indigo); color: #fff; }
+.stage.done .lbl, .stage.active .lbl { color: var(--indigo); }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 4px var(--indigo-tint); }
+  50% { box-shadow: 0 0 0 8px rgba(56,18,243,0.04); } }
+
+/* console */
+.console {
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.7; background: #15151c; color: #e9e9ef;
+  border-radius: 8px; padding: 12px 14px; margin-top: 14px; min-height: 46px;
+  max-height: 230px; overflow-y: auto;
+}
+.console .ln { opacity: 0; transform: translateY(4px); animation: lnin .25s forwards; }
+.console .ln .t { color: #6f6f86; }
+.console .ln .a { color: #9b8cff; font-weight: 700; }
+.console .ln .g { color: #5fd39a; }
+.console .ln .y { color: #f0b54a; }
+@keyframes lnin { to { opacity: 1; transform: none; } }
+
+/* ---- stage detail cards ---- */
+.stagebox {
+  border: 1px solid var(--border); border-left: 3px solid var(--indigo);
+  border-radius: 0 10px 10px 0; background: var(--card); padding: 4px 20px 16px; margin: 16px 0 26px;
+}
+.stagebox > h3 { display: flex; align-items: center; gap: 10px; }
+.stagebox .agentno {
+  font-family: var(--mono); font-size: 12px; font-weight: 700; color: #fff; background: var(--indigo);
+  width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex: 0 0 auto;
+}
+.det { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--subtle); margin: 16px 0 5px; }
+.io { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0; }
+@media (max-width: 720px) { .io { grid-template-columns: 1fr; } }
+.iobox { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #faf9f5; }
+.iobox .cap { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--subtle); margin-bottom: 6px; }
+.iobox pre { margin: 0; background: none; border: none; padding: 0; font-size: 12.5px; }
+
+.promptbox { margin: 8px 0; }
+.promptbox summary { cursor: pointer; font-family: var(--mono); font-size: 12.5px; color: var(--indigo);
+  padding: 7px 11px; background: var(--indigo-tint); border: 1px solid var(--border); border-radius: 7px; }
+.promptbox summary:hover { background: var(--indigo-tint-strong); }
+.promptbox[open] summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.promptbox pre { margin: 0; border-top: none; border-top-left-radius: 0; border-top-right-radius: 0;
+  white-space: pre-wrap; }
+.fillnote { font-family: var(--mono); font-size: 11px; color: var(--subtle); margin: 6px 0 0; }
+
+.tweak { border-left: 3px solid var(--warning); background: rgba(207,127,16,0.07);
+  padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14.5px; }
+.tweak::before { content: "Tweak surface — "; font-family: var(--mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--warning); }
+.tweak code { white-space: nowrap; }
+
+/* entity pills row */
+.ents { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.ent { font-family: var(--mono); font-size: 12.5px; padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  opacity: .35; transform: scale(.96); transition: opacity .3s, transform .3s, border-color .3s, color .3s; }
+.ent.lit { opacity: 1; transform: none; border-color: var(--indigo); color: var(--indigo);
+  background: var(--indigo-tint); }
+.ent .ty { color: var(--subtle); }
+.ent.lit .ty { color: var(--indigo-soft); }
+.ent.principal.lit { border-color: var(--success); color: var(--success); background: rgba(28,138,82,0.1); }
+
+/* ---- animated graph ---- */
+.graphwrap { position: relative; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); margin: 18px 0; height: 440px; overflow: hidden; }
+.graphwrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gnode { position: absolute; transform: translate(-50%,-50%); text-align: center;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 7px 11px; border-radius: 9px;
+  border: 1.5px solid var(--border-strong); background: var(--card); color: var(--ink);
+  white-space: nowrap; opacity: 0; transition: opacity .4s, transform .4s; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+.gnode.show { opacity: 1; }
+.gnode .nt { display: block; font-weight: 400; font-size: 10px; color: var(--subtle); }
+.gnode.person { border-color: var(--indigo); }
+.gnode.company { border-color: #b08400; }
+.gnode.project { border-color: #1c8a52; }
+.gnode.principal { border-color: var(--success); border-width: 2.5px; background: rgba(28,138,82,0.08); }
+.edge { stroke: var(--indigo-soft); stroke-width: 1.8; fill: none;
+  stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .6s ease; }
+.edge.structural { stroke: var(--success); stroke-dasharray: 4 3; }
+.edge.drawn { stroke-dashoffset: 0; }
+.elabel { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); opacity: 0; transition: opacity .3s; }
+.elabel.show { opacity: 1; }
+.greset { position: absolute; top: 10px; right: 10px; z-index: 5; font-family: var(--mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .05em; padding: 5px 11px; border: 1px solid var(--border);
+  background: rgba(240,240,236,0.92); color: var(--ink); border-radius: 7px; cursor: pointer; }
+.greset:hover { border-color: var(--indigo); color: var(--indigo); }
+
+/* json page builder */
+.pagejson { position: relative; }
+.pagejson .seg { transition: background .4s; border-radius: 4px; }
+.pagejson .seg.flash { background: var(--indigo-tint-strong); }
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html">2 · Architecture</a>
+    <a href="03-data-model.html">3 · Data model</a>
+    <a href="04-frontend-pages.html">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
+    <a href="08-transformers.html">8 · Transformers</a>
+    <a href="09-comprehend-walkthrough.html" class="active">9 · Comprehend</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 9</p>
+  <h1>Comprehend, one email at a time</h1>
+  <p class="lead">
+    Capture and triage get a clean, in-scope email into the database. <strong>Comprehend</strong> is
+    the expensive, LLM-bound back half that turns that one email into brain pages, a knowledge graph,
+    and a search index. This chapter follows a single real-shaped email through every agent — with the
+    actual system prompts, so you can see exactly what to tweak.
+  </p>
+
+  <div class="callout analogy">
+    Think of one analyst reading one email and updating a shared dossier: they translate it if it's
+    foreign, list who and what it mentions, decide which of those are people they already have a file
+    on, then for each one they jot a fact or two, note who it connects to, refresh the one-line summary,
+    and add a dated line to the timeline. Comprehend is that analyst — run by a swarm of small agents.
+  </div>
+
+  <h2>The example email</h2>
+  <p>
+    Everything below traces this one message. It arrives in German on purpose, so the very first
+    agent — the translator — has real work to do. The workspace already has two
+    <strong>seeded anchor pages</strong>: <code>Felix Kasiske</code> (a person, marked the
+    <em>principal</em> — the workspace's centre of gravity, known by his address) and
+    <code>Acme</code> (a company).
+  </p>
+
+  <div class="email">
+    <div class="hdr">
+      <div><span class="k">From:</span> <span class="v">Michael Dempsey &lt;michael.dempsey@acme.com&gt;</span></div>
+      <div><span class="k">To:</span> <span class="v">Felix Kasiske &lt;felix.kasiske@rpx-optimization.com&gt;</span></div>
+      <div><span class="k">Subject:</span> <span class="v">Einführung — Projekt Helios</span> <span class="lang">DE</span></div>
+    </div>
+    <div class="body">Hallo Felix,
+
+ich möchte Dich gern mit Sarah Lindqvist von Northwind Logistics bekannt machen.
+Sarah leitet dort den Einkauf und ist sehr an unserem Projekt Helios interessiert.
+Du erreichst sie direkt unter sarah.lindqvist@northwind.io.
+
+Viele Grüße
+Michael Dempsey
+Acme GmbH</div>
+  </div>
+
+  <p>
+    The connector that captured this also handed comprehend the structured header fields it will
+    need later: <code>sender = michael.dempsey@acme.com</code>, <code>sender_name = "Michael Dempsey"</code>,
+    and <code>participants = ["michael.dempsey@acme.com", "felix.kasiske@rpx-optimization.com"]</code>.
+    Those drive the deterministic, header-grounded edges at the end.
+  </p>
+
+  <h2>Press play</h2>
+  <p>
+    The pipeline runs the stages below in order. The first four are sequential (each needs the one
+    before it); the per-entity agents then <strong>fan out in parallel</strong>. Click a stage to jump
+    to its deep-dive.
+  </p>
+
+  <div class="player">
+    <div class="player-top">
+      <button class="playbtn" id="play">▶ Run comprehend</button>
+      <span class="player-hint" id="phint">~32 LLM calls peak · one email</span>
+    </div>
+    <div class="track" id="track">
+      <div class="fill" id="fill"></div>
+      <!-- stages injected/keyed by data-stage -->
+      <button class="stage" data-go="s-translate"><span class="dot">DE</span><span class="lbl">Translate</span></button>
+      <button class="stage" data-go="s-identify"><span class="dot">1</span><span class="lbl">Identify</span></button>
+      <button class="stage" data-go="s-canon"><span class="dot">2</span><span class="lbl">Canonicalize</span></button>
+      <button class="stage" data-go="s-inject"><span class="dot">+</span><span class="lbl">Inject<br>people</span></button>
+      <button class="stage" data-go="s-attr"><span class="dot">3</span><span class="lbl">Attributes</span></button>
+      <button class="stage" data-go="s-rel"><span class="dot">4</span><span class="lbl">Relations</span></button>
+      <button class="stage" data-go="s-norm"><span class="dot">5</span><span class="lbl">Normalize</span></button>
+      <button class="stage" data-go="s-desc"><span class="dot">6</span><span class="lbl">Describe</span></button>
+      <button class="stage" data-go="s-time"><span class="dot">7</span><span class="lbl">Timeline</span></button>
+      <button class="stage" data-go="s-graph"><span class="dot">⇄</span><span class="lbl">Graph<br>sync</span></button>
+    </div>
+    <div class="console" id="console"><div class="ln"><span class="t">idle — press “Run comprehend”.</span></div></div>
+  </div>
+
+  <p class="small">
+    Orchestration lives in <code>backend/src/ingestion/comprehend/pipeline.py</code> →
+    <code>ComprehendPipeline.process_text()</code>. The runner that feeds it captured emails is
+    <code>backend/src/ingestion/runner.py</code>.
+  </p>
+
+  <h2>The shared machinery (every agent)</h2>
+  <p>
+    Each agent below is a thin subclass of <code>Agent</code>
+    (<code>comprehend/agents/base.py</code>). It writes a prompt; the base class does the rest:
+  </p>
+  <ul>
+    <li><strong>Model</strong> — one call to <code>LLM_BASE_MODEL</code> (the EU open-weights model,
+      <code>openai/gpt-oss-120b</code> on <code>api.llmbase.ai</code>), single user message, no system role.</li>
+    <li><strong>Concurrency cap</strong> — a global semaphore (<code>LLM_BASE_MAX_CONCURRENCY</code>,
+      default 4) queues every call across every thread, so the fan-out never trips LLMBase's
+      “too many concurrent requests”.</li>
+    <li><strong>Retries</strong> — up to 5 attempts on transient 429/timeout/5xx with exponential
+      backoff + jitter.</li>
+    <li><strong>Hard credit cap</strong> — <code>enforce_credit_limit()</code> fires <em>before</em>
+      the call; an over-budget org raises <code>CreditLimitExceeded</code> and the runner stops cleanly.</li>
+    <li><strong>Metering</strong> — every response's token counts are costed against the price book
+      and written to <code>llm_usage_events</code> (this is what the per-email trace in Observability sums).</li>
+    <li><strong>Defensive JSON</strong> — <code>_call_json()</code> strips ```code fences and falls back
+      to a default on malformed JSON, because cheap models are unreliable.</li>
+  </ul>
+
+  <!-- ========================= TRANSLATE ========================= -->
+  <h2 id="s-translate">Stage 0 · Translate <span class="lang">DE → EN</span></h2>
+  <div class="stagebox">
+    <h3><span class="agentno">T</span> TranslatorAgent</h3>
+    <p>
+      <strong>Why first:</strong> the brain is English-only by policy — every page, edge, chunk and
+      embedding is built from English text. So a non-English body is translated <em>once</em>, here,
+      before any other agent sees it. (Triage already ran upstream on the raw German using a
+      multilingual model, so spam never reaches this paid step.)
+    </p>
+    <p>
+      <strong>Cost gate:</strong> we don't translate blindly. <code>looks_german()</code> is a cheap,
+      dependency-free check — any of <code>ä ö ü Ä Ö Ü ß</code>, <em>or</em> ≥3 common German function
+      words (<code>der/die/das/und/ist…</code>). Our email has “möchte”, “Grüße” and “Einführung”, so
+      it trips instantly and the LLM call fires. An English-only customer pays nothing here.
+    </p>
+
+    <div class="det">System prompt (verbatim)</div>
+    <details class="promptbox" open>
+      <summary>TranslatorAgent.run() — comprehend/agents/translator.py</summary>
+<pre>Translate the text below into English. Keep it faithful and
+complete. Preserve proper names, company names, email addresses,
+URLs, numbers, and the original line structure. Do NOT add notes,
+labels, or commentary. If the text is already English, return it
+unchanged. Output ONLY the translated text.
+
+TEXT:
+{cleaned}</pre>
+    </details>
+
+    <div class="io">
+      <div class="iobox"><div class="cap">in — {cleaned}</div><pre>Hallo Felix, ich möchte Dich gern
+mit Sarah Lindqvist von Northwind
+Logistics bekannt machen. Sarah
+leitet dort den Einkauf …
+sarah.lindqvist@northwind.io …
+Viele Grüße, Michael Dempsey,
+Acme GmbH</pre></div>
+      <div class="iobox"><div class="cap">out — English (every later agent sees this)</div><pre>Hi Felix, I'd like to introduce you
+to Sarah Lindqvist from Northwind
+Logistics. Sarah leads procurement
+there and is very interested in our
+Project Helios. You can reach her
+directly at sarah.lindqvist@northwind.io.
+Best, Michael Dempsey, Acme GmbH</pre></div>
+    </div>
+    <p class="fillnote">Note how names, the address, and line structure survive — that's the prompt earning its keep, so downstream extraction stays grounded.</p>
+    <div class="tweak">
+      To support more languages, widen <code>looks_german()</code> or replace it with a real
+      language-ID; the prompt itself is already language-agnostic. Set <code>request_kind="translation"</code>
+      keeps this cost attributable separately in the ledger.
+    </div>
+  </div>
+
+  <!-- ========================= IDENTIFY ========================= -->
+  <h2 id="s-identify">Stage 1 · Identify the entities</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">1</span> IdentifierAgent</h3>
+    <p>
+      One LLM call lists every entity in the (now English) email, each typed by the
+      <strong>tenant's ontology</strong> — the types are not hardcoded. Each type's one-line
+      description is fed in so the model knows what counts as a “company” for <em>this</em> customer.
+      It must pick from that closed list and never invent a type. It may attach an <code>email</code>
+      only when the text clearly states that entity's own address.
+    </p>
+
+    <div class="det">System prompt (verbatim · comprehend/agents/identifier.py)</div>
+    <details class="promptbox">
+      <summary>IdentifierAgent.run() — type_lines / allowed are filled from the ontology</summary>
+<pre>List every distinct entity mentioned in the email below that
+matches one of the types defined here:
+
+{type_lines}
+
+Return ONLY a JSON list of objects, each with 'type', 'name', and
+optionally 'email'. 'type' must be exactly one of: {types}.
+Use full canonical names. Include 'email' ONLY when the email text
+clearly gives that entity's own address (e.g. a signature, the
+From/To line, or 'reach me at …'); otherwise omit it — never guess.
+Pick the single best-fitting type for each entity; never invent a
+type. No commentary.
+
+Example: [{"type":"{example_key}","name":"Jane Doe","email":"jane@acme.com"}]
+
+EMAIL:
+{email_text}</pre>
+    </details>
+    <p class="fillnote">For this tenant <code>{type_lines}</code> expands to:
+      <code>- person: a named individual …</code> ·
+      <code>- company: an organisation …</code> ·
+      <code>- project: a named initiative or deal …</code></p>
+
+    <div class="io">
+      <div class="iobox"><div class="cap">in</div><pre>type_lines (ontology) + English email</pre></div>
+      <div class="iobox"><div class="cap">out — raw mentions (JSON)</div><pre>[
+ {"type":"person","name":"Sarah Lindqvist",
+  "email":"sarah.lindqvist@northwind.io"},
+ {"type":"company","name":"Northwind Logistics"},
+ {"type":"project","name":"Project Helios"},
+ {"type":"company","name":"Acme GmbH"},
+ {"type":"person","name":"Michael Dempsey"}
+]</pre></div>
+    </div>
+    <p>
+      Python then post-filters: a type not in the allowed set is dropped, and every name runs through
+      <code>clean_person_name()</code> so a stray address can never become a node's display name. Sarah
+      keeps her body-stated address.
+    </p>
+    <div class="tweak">
+      This is the highest-leverage prompt for recall. The <em>type definitions</em> live in the
+      ontology (Admin Center → Brain → Ontology), not in code — edit a type's description there to change
+      what gets picked up. Edit the prompt in <code>identifier.py</code> only to change extraction
+      behaviour globally.
+    </div>
+  </div>
+
+  <!-- ========================= CANONICALIZE ========================= -->
+  <h2 id="s-canon">Stage 2 · Canonicalize onto known entities</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">2</span> CanonicalizerAgent <span class="pill mock" style="margin-left:6px">no LLM</span></h3>
+    <p>
+      Despite the name this is <strong>deterministic code</strong>, not a model call — the cheap LLM was
+      unreliable here and kept splitting “Felix” and “Dr Felix Kasiske” into two pages. It maps each raw
+      mention onto an already-known entity of the same type, by two rules (logic in
+      <code>comprehend/canonicalize.py</code>):
+    </p>
+    <ol>
+      <li><strong>Personal email match (strongest):</strong> if the mention's address is a personal one
+        (not <code>info@</code>/<code>noreply@</code>…) and a known entity is known by it, that wins outright.</li>
+      <li><strong>Name tokens:</strong> exact match after lower-casing + honorific strip + umlaut folding,
+        then token-subset either way (“Acme GmbH” ⊇ “Acme”). Most overlap wins; ties break to the longer name.</li>
+    </ol>
+
+    <div class="io">
+      <div class="iobox"><div class="cap">known anchors (this tenant)</div><pre>person  Felix Kasiske
+        (felix.kasiske@rpx-optimization.com)
+company Acme</pre></div>
+      <div class="iobox"><div class="cap">out — resolved mentions</div><pre>Sarah Lindqvist     → Sarah Lindqvist  (new)
+Northwind Logistics → Northwind Logistics (new)
+Project Helios      → Project Helios   (new)
+Acme GmbH           → <b>Acme</b>  (token subset → anchor)
+Michael Dempsey     → Michael Dempsey  (new)</pre></div>
+    </div>
+    <p>
+      “Acme GmbH” collapses onto the seeded <code>Acme</code> page instead of spawning a near-duplicate.
+      That single behaviour is why hand-seeding anchors at onboarding matters.
+    </p>
+    <div class="tweak">
+      Honorifics, role-inbox addresses, and umlaut folding are all simple lists/functions in
+      <code>canonicalize.py</code> (<code>_HONORIFICS</code>, <code>_ROLE_LOCALPARTS</code>,
+      <code>_UMLAUT_FOLD</code>) — extend those rather than reaching for an LLM.
+    </div>
+  </div>
+
+  <!-- ========================= INJECT ========================= -->
+  <h2 id="s-inject">Stage 2b · Inject the people on the envelope</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">+</span> Participant injection + the principal</h3>
+    <p>
+      An email always has a sender and recipients in its <em>headers</em>, even if the body names no one.
+      So before fanning out, the pipeline adds them as person entities (each cleanly named and resolved by
+      address, recipients capped at 8 to survive a mailing list). It also always offers the
+      <strong>principal</strong> as a relationship target — never re-processed, just a place for edges to land.
+    </p>
+    <p>This is why <em>every</em> email yields at least the sender + a real entity, and why the graph is
+      never empty even for a one-line note.</p>
+
+    <div class="det">Entities entering the fan-out (deduped on type+name)</div>
+    <div class="ents" id="entrow">
+      <span class="ent person" data-e>Michael Dempsey <span class="ty">· person</span></span>
+      <span class="ent person principal" data-e>Felix Kasiske <span class="ty">· principal</span></span>
+      <span class="ent person" data-e>Sarah Lindqvist <span class="ty">· person</span></span>
+      <span class="ent company" data-e>Acme <span class="ty">· company</span></span>
+      <span class="ent company" data-e>Northwind Logistics <span class="ty">· company</span></span>
+      <span class="ent project" data-e>Project Helios <span class="ty">· project</span></span>
+    </div>
+    <p class="fillnote">Felix arrives twice — named in the To line and as the seeded principal — and
+      <code>_dedup_entities()</code> merges them into one, carrying the address across.</p>
+  </div>
+
+  <h2>Per-entity fan-out</h2>
+  <p>
+    Now each entity gets its own brain page, built in parallel (up to 8 entities at once). <em>Within</em>
+    one entity, four agents run concurrently on disjoint parts of the page. We'll follow
+    <strong>Sarah Lindqvist</strong> — a brand-new person page — through all four. The same four run for
+    Michael, Acme, Northwind and Project Helios simultaneously.
+  </p>
+
+  <!-- ========================= ATTRIBUTES ========================= -->
+  <h2 id="s-attr">Stage 3 · Attributes (the frontmatter)</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">3</span> AttributeAgent</h3>
+    <p>
+      One generic agent fills the entity type's configured fields — driven by the ontology's
+      <code>FieldSpec</code> list, not per-type code. It fills a field <em>only if</em> the email states
+      it; anything unstated stays <code>null</code> (or <code>[]</code> for list fields). No guessing.
+    </p>
+    <div class="det">System prompt (verbatim · comprehend/agents/attribute.py)</div>
+    <details class="promptbox">
+      <summary>AttributeAgent.run() — field_lines / keys come from the type's FieldSpec</summary>
+<pre>From the email below, extract these facts about the {type_label}
+'{name}', if and only if the email clearly states them. For
+anything not stated, use null (or [] for list fields). Do not guess.
+
+Fields:
+{field_lines}
+
+Return ONLY a JSON object with exactly these keys: {keys}.
+
+EMAIL:
+{email_text}</pre>
+    </details>
+    <div class="io">
+      <div class="iobox"><div class="cap">in — for name='Sarah Lindqvist', type_label='person'</div><pre>Fields:
+- role: job title or role, if stated
+- organization: the company they belong to
+- location: city/country, if stated</pre></div>
+      <div class="iobox"><div class="cap">out — frontmatter values</div><pre>{
+ "role": "Head of Procurement",
+ "organization": "Northwind Logistics",
+ "location": null
+}</pre></div>
+    </div>
+    <p class="fillnote">“leads procurement” → <code>role</code>; “from Northwind Logistics” → <code>organization</code>;
+      no city stated → <code>location: null</code>. The email also gave her address, so the page's
+      <code>email</code> field is set from the mention (so future emails resolve to her by address).</p>
+    <div class="tweak">
+      Add/rename/redescribe fields in the ontology (Admin → Brain → Ontology). The agent reads them at
+      runtime — no code change needed to capture a new attribute.
+    </div>
+  </div>
+
+  <!-- ========================= RELATIONSHIPS ========================= -->
+  <h2 id="s-rel">Stage 4 · Relationships (open inference)</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">4</span> RelationshipAgent</h3>
+    <p>
+      Run <em>per subject</em> over the other entities in the same email. The model is free to
+      <strong>name the predicate</strong> — a short <code>snake_case</code> verb phrase it judges fits —
+      rather than picking from a fixed list. Objects must come from the supplied candidate list
+      <em>exactly as written</em>, so every edge lands on a real, canonical entity (no invented nodes).
+    </p>
+    <div class="det">System prompt (verbatim · comprehend/agents/relationship.py)</div>
+    <details class="promptbox">
+      <summary>RelationshipAgent.run() — subject + object_lines filled per entity</summary>
+<pre>The subject is {subj_name} (a {subj_type}). From the email below,
+identify the relationships the email DIRECTLY states FROM this
+subject TO the other entities listed. For each, choose a SHORT
+predicate as a snake_case verb phrase (e.g. works_with, reports_to,
+client_of, manages, introduced, mentioned). Reuse the same predicate
+for the same kind of relationship — don't invent near-synonyms.
+
+OTHER ENTITIES (possible objects):
+{object_lines}
+
+Return ONLY a JSON list of objects, each with 'predicate' (snake_case)
+and 'object' (a name from the OTHER ENTITIES list EXACTLY as written).
+Only include a relationship the email clearly supports; if there are
+none, return []. Never invent an entity.
+
+EMAIL:
+{email_text}</pre>
+    </details>
+    <div class="io">
+      <div class="iobox"><div class="cap">in — subject = Sarah Lindqvist (person)</div><pre>OTHER ENTITIES:
+- Michael Dempsey (person)
+- Felix Kasiske (person)
+- Acme (company)
+- Northwind Logistics (company)
+- Project Helios (project)</pre></div>
+      <div class="iobox"><div class="cap">out — raw triples (pre-normalize)</div><pre>[
+ {"predicate":"works_at",
+  "object":"Northwind Logistics"},
+ {"predicate":"interested_in",
+  "object":"Project Helios"}
+]</pre></div>
+    </div>
+    <p class="fillnote">Subject = Michael Dempsey in parallel yields
+      <code>introduced → Sarah Lindqvist</code>, <code>employed_by → Acme</code>,
+      <code>mentioned → Project Helios</code>. “leads procurement” is dropped — procurement isn't an entity.</p>
+    <div class="tweak">
+      Open inference maximises recall but risks predicate sprawl — that's what Stage 5 + the per-pair cap
+      contain. To force a closed vocabulary instead, constrain the prompt to a fixed predicate list.
+    </div>
+  </div>
+
+  <!-- ========================= NORMALIZE ========================= -->
+  <h2 id="s-norm">Stage 5 · Normalize predicates</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">5</span> PredicateNormalizerAgent</h3>
+    <p>
+      Open inference means <code>works_at</code> / <code>works_for</code> / <code>employed_by</code> can
+      all show up meaning the same thing. This agent collapses each new predicate onto the tenant's
+      <strong>canonical vocabulary</strong> (seeded from predicates already in the graph, grown during the
+      run). It's cheap by design: deterministic snake_case first, an <em>exact</em> registry hit reuses with
+      <strong>no LLM call</strong>, and an in-process cache means each distinct wording costs at most one call.
+    </p>
+    <div class="det">System prompt (verbatim · comprehend/agents/predicate_normalizer.py)</div>
+    <details class="promptbox">
+      <summary>PredicateNormalizerAgent.run() — only fires when base ∉ registry and registry ≠ ∅</summary>
+<pre>You maintain a canonical vocabulary of relationship predicates
+(short snake_case verb phrases). Given a NEW predicate and the
+EXISTING canonical predicates, decide:
+- If the NEW predicate means essentially the same as one of the
+EXISTING ones, return that existing predicate EXACTLY.
+- Otherwise return the NEW predicate as a clean snake_case phrase.
+Return ONLY the predicate token — no quotes, no explanation.
+
+NEW: {base}
+
+EXISTING:
+{known_list}</pre>
+    </details>
+    <div class="io">
+      <div class="iobox"><div class="cap">registry before</div><pre>communicated_with
+employed_by
+introduced
+mentioned</pre></div>
+      <div class="iobox"><div class="cap">decisions</div><pre>works_at      → employed_by   (LLM: synonym)
+interested_in → interested_in (new canonical, added)
+introduced    → introduced    (exact hit, no LLM)
+mentioned     → mentioned     (exact hit, no LLM)</pre></div>
+    </div>
+    <p class="fillnote">So Sarah's <code>works_at → Northwind Logistics</code> is rewritten to
+      <code>employed_by → Northwind Logistics</code>, and <code>interested_in</code> joins the registry for
+      the rest of the run.</p>
+    <div class="tweak">
+      Pre-seed the registry to enforce house vocabulary, or lower the model's freedom by editing this prompt.
+      The hard ceiling on sprawl is the per-pair cap in graph sync (next).
+    </div>
+  </div>
+
+  <!-- ========================= DESCRIBE ========================= -->
+  <h2 id="s-desc">Stage 6 · Description (write or update)</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">6</span> DescriptionWriterAgent / DescriptionUpdaterAgent</h3>
+    <p>
+      A brand-new page gets a fresh 2–3 sentence summary (writer). An existing page gets the
+      <strong>conservative updater</strong>: most emails change nothing — routine events belong in the
+      timeline, not the summary — so it defaults to “no change” and only revises on a contradiction or a
+      material change. Sarah is new, so the writer runs.
+    </p>
+    <div class="det">DescriptionWriterAgent (new page) — verbatim</div>
+    <details class="promptbox">
+      <summary>comprehend/agents/description.py · writer</summary>
+<pre>Write a 2-3 sentence factual summary of the {entity_type}
+'{name}', based only on the email below. State only what the
+email supports. Return ONLY the summary text, no preamble.
+
+EMAIL:
+{email_text}</pre>
+    </details>
+    <div class="det">DescriptionUpdaterAgent (existing page) — verbatim</div>
+    <details class="promptbox">
+      <summary>comprehend/agents/description.py · updater (defaults to no change)</summary>
+<pre>Below is the current summary of '{name}' and a new email.
+
+Decide if the summary needs revising. It is EXPECTED and CORRECT
+that most emails need no change — routine events belong in the
+timeline, not the summary. Only revise if the email contradicts
+the summary or materially changes who/what this is.
+
+Return ONLY a JSON object:
+{"update_needed": true|false, "reason": "...", "new_description": "..." or null}
+
+CURRENT SUMMARY:
+{current_description}
+
+NEW EMAIL:
+{email_text}</pre>
+    </details>
+    <div class="iobox"><div class="cap">out — Sarah's description (writer)</div><pre>Sarah Lindqvist is the Head of Procurement at Northwind Logistics.
+She was introduced by Michael Dempsey of Acme and is interested in
+Project Helios.</pre></div>
+    <div class="tweak">
+      The updater's conservatism is the whole reason summaries don't churn. If you <em>want</em> richer
+      summaries that absorb every email, loosen its “only revise if…” clause — but expect more cost and drift.
+    </div>
+  </div>
+
+  <!-- ========================= TIMELINE ========================= -->
+  <h2 id="s-time">Stage 7 · Timeline entry</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">7</span> TimelineAgent</h3>
+    <p>One concrete, dated sentence per email per entity. The date is the email's date (header), the
+      sentence is the model's. Exact-duplicate entries are skipped and the list is kept sorted.</p>
+    <div class="det">System prompt (verbatim · comprehend/agents/timeline.py)</div>
+    <details class="promptbox">
+      <summary>TimelineAgent.run()</summary>
+<pre>Write a ONE-sentence timeline entry recording what the email
+below tells us about '{name}'. Be concrete and factual.
+
+Return ONLY a JSON object: {"entry": "&lt;one sentence&gt;"}.
+
+EMAIL:
+{email_text}</pre>
+    </details>
+    <div class="iobox"><div class="cap">out — appended to Sarah's timeline</div><pre>{ "date": "2026-06-10",
+  "entry": "Introduced to Felix Kasiske by Michael Dempsey as a
+            Northwind Logistics contact interested in Project Helios." }</pre></div>
+  </div>
+
+  <h2>The page that results</h2>
+  <p>
+    The four agents' outputs land on disjoint parts of one JSON object, which is saved to
+    <code>brain_pages</code> (a row in the tenant DB, keyed by <code>persons/sarah-lindqvist.json</code>).
+    This is the <strong>source of truth</strong> — the graph and search index are derived from it, so a
+    credit-free <code>reinit</code> can always rebuild them from these pages.
+  </p>
+  <pre class="pagejson">{
+  <span class="seg" data-seg="fm">"frontmatter": {
+    "type": "person",
+    "name": "Sarah Lindqvist",
+    "role": "Head of Procurement",          <span class="t" style="color:var(--subtle)">// AttributeAgent</span>
+    "organization": "Northwind Logistics",  <span class="t" style="color:var(--subtle)">// AttributeAgent</span>
+    "location": null,
+    "email": "sarah.lindqvist@northwind.io",<span class="t" style="color:var(--subtle)">// from the body mention</span>
+    "tags": []
+  },</span>
+  <span class="seg" data-seg="desc">"description": "Sarah Lindqvist is the Head of Procurement at Northwind
+                  Logistics. She was introduced by Michael Dempsey of Acme
+                  and is interested in Project Helios.",   <span class="t" style="color:var(--subtle)">// DescriptionWriter</span></span>
+  <span class="seg" data-seg="rel">"relationships": [                          <span class="t" style="color:var(--subtle)">// RelationshipAgent → normalized</span>
+    {"predicate": "employed_by",   "object": "Northwind Logistics", "object_type": "company"},
+    {"predicate": "interested_in", "object": "Project Helios",      "object_type": "project"}
+  ],</span>
+  <span class="seg" data-seg="time">"timeline": [                               <span class="t" style="color:var(--subtle)">// TimelineAgent</span>
+    {"date": "2026-06-10", "entry": "Introduced to Felix Kasiske by Michael
+                                     Dempsey, interested in Project Helios."}
+  ]</span>
+}</pre>
+
+  <!-- ========================= GRAPH ========================= -->
+  <h2 id="s-graph">Stage 8 · Sync to the graph + index</h2>
+  <div class="stagebox">
+    <h3><span class="agentno">⇄</span> graph_sync · entities, edges, chunks</h3>
+    <p>
+      After each page saves, <code>sync_page_to_graph()</code> (<code>ingestion/index/graph_sync.py</code>)
+      derives three things:
+    </p>
+    <ul>
+      <li><strong>Entity row</strong> — find-or-create the subject in <code>entities</code>, stamping its
+        <code>page_path</code>.</li>
+      <li><strong>Relationship rows</strong> — each stored triple's object name is canonicalized onto an
+        existing entity (so “Acme GmbH” → <code>Acme</code> again), then written to <code>relationships</code>.
+        A <strong>per-pair cap of 3</strong> distinct predicates is enforced <em>durably</em> against what the
+        pair already holds, so no (subject, object) pair ever sprawls.</li>
+      <li><strong>Chunks + embeddings</strong> — the description and each timeline entry become one chunk
+        each (frontmatter is <em>not</em> chunked — attribute search belongs in graph queries). Each chunk's
+        text is prefixed with the entity name (and date), embedded with the 1024-dim model, and written to
+        <code>chunks</code> for vector + keyword search.</li>
+    </ul>
+    <p>
+      Finally — back in <code>process_text()</code>, not the LLM — the <strong>structural edges</strong> are
+      written straight from the header metadata: <code>sender —communicated_with→</code> each recipient and
+      the principal. These are grounded facts (the envelope), so they're never inferred, and they guarantee
+      ≥1 edge per multi-party email.
+    </p>
+
+    <div class="graphwrap" id="graph">
+      <button class="greset" id="greplay">↻ Replay</button>
+      <svg viewBox="0 0 760 440" preserveAspectRatio="xMidYMid meet" id="gsvg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#7159f6"></path>
+          </marker>
+          <marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1c8a52"></path>
+          </marker>
+        </defs>
+        <!-- edges: michael(170,190) felix(380,60) sarah(590,190) acme(110,350) helios(380,330) northwind(610,350) -->
+        <path class="edge structural" data-edge pathLength="1" marker-end="url(#arrowg)" d="M188,176 L362,74"></path>
+        <path class="edge" data-edge pathLength="1" marker-end="url(#arrow)" d="M218,190 L542,190"></path>
+        <path class="edge" data-edge pathLength="1" marker-end="url(#arrow)" d="M158,210 L120,330"></path>
+        <path class="edge" data-edge pathLength="1" marker-end="url(#arrow)" d="M596,210 L608,330"></path>
+        <path class="edge" data-edge pathLength="1" marker-end="url(#arrow)" d="M566,208 L402,318"></path>
+        <path class="edge" data-edge pathLength="1" marker-end="url(#arrow)" d="M192,208 L360,318"></path>
+        <text class="elabel" data-el x="250" y="118">communicated_with</text>
+        <text class="elabel" data-el x="338" y="183">introduced</text>
+        <text class="elabel" data-el x="120" y="278">employed_by</text>
+        <text class="elabel" data-el x="616" y="278">employed_by</text>
+        <text class="elabel" data-el x="500" y="270">interested_in</text>
+        <text class="elabel" data-el x="250" y="270">mentioned</text>
+      </svg>
+      <div class="gnode person principal" data-n style="left:380px;top:60px">Felix Kasiske<span class="nt">principal · person</span></div>
+      <div class="gnode person" data-n style="left:170px;top:190px">Michael Dempsey<span class="nt">person</span></div>
+      <div class="gnode person" data-n style="left:590px;top:190px">Sarah Lindqvist<span class="nt">person</span></div>
+      <div class="gnode company" data-n style="left:110px;top:350px">Acme<span class="nt">company</span></div>
+      <div class="gnode project" data-n style="left:380px;top:330px">Project Helios<span class="nt">project</span></div>
+      <div class="gnode company" data-n style="left:610px;top:350px">Northwind Logistics<span class="nt">company</span></div>
+    </div>
+    <p class="fillnote">Green dashed = header-grounded structural edge (written directly). Solid indigo =
+      LLM-inferred, normalized relationships. Acme is the seeded anchor every “Acme GmbH” collapses onto.</p>
+  </div>
+
+  <h2>What one email cost — and left behind</h2>
+  <div class="grid cols-3">
+    <div class="card"><h4 style="margin-top:0">LLM calls</h4>
+      <p class="small" style="margin:0">1 translate · 1 identify · 0 canonicalize · then per-entity
+      (≈4 each × ~5 entities) ≈ <strong>22–32</strong> calls, most in parallel. Costed to
+      <code>llm_usage_events</code>, attributed to the capturing mailbox.</p></div>
+    <div class="card"><h4 style="margin-top:0">Rows written</h4>
+      <p class="small" style="margin:0"><strong>5</strong> brain pages · <strong>5</strong> entities ·
+      <strong>~7</strong> relationships (incl. 1 structural) · <strong>~10</strong> chunks+embeddings ·
+      provenance links per row.</p></div>
+    <div class="card"><h4 style="margin-top:0">Idempotence</h4>
+      <p class="small" style="margin:0">Re-running the same email re-asserts the same triples (deduped),
+      replaces the page's chunks, and stamps <code>processed_at</code> so it never re-comprehends twice.</p></div>
+  </div>
+
+  <div class="callout">
+    <strong>The throughline:</strong> the page is the source of truth; entities, edges and chunks are a
+    <em>derived</em> index. Every prompt above is a single user message you can edit in
+    <code>backend/src/ingestion/comprehend/agents/</code>, and every entity <em>type</em>, field, and the
+    seeded anchors are tenant data you change in the Admin Center — no deploy needed.
+  </div>
+
+  <div class="pager">
+    <a href="08-transformers.html">← Transformers</a>
+    <a class="next" href="index.html">Back to home →</a>
+  </div>
+</main>
+
+<script>
+(function () {
+  // ---- pipeline player -------------------------------------------------
+  var stages = [
+    {go:"s-translate", c:[["a","TranslatorAgent"],["t"," looks_german()=true → "],["y","translating DE→EN"]]},
+    {go:"s-identify",  c:[["a","IdentifierAgent"],["t"," → 5 mentions: "],["g","Sarah, Northwind, Project Helios, Acme GmbH, Michael"]]},
+    {go:"s-canon",     c:[["a","Canonicalizer"],["t"," (no LLM) "],["g","Acme GmbH → Acme"],["t"," collapses onto the seeded anchor"]]},
+    {go:"s-inject",    c:[["a","inject"],["t"," sender + recipients + principal; dedup → "],["g","6 entities"]]},
+    {go:"s-attr",      c:[["t","fan-out ▸ "],["a","AttributeAgent"],["t"," Sarah → role=Head of Procurement, org=Northwind"]]},
+    {go:"s-rel",       c:[["a","RelationshipAgent"],["t"," Sarah → "],["g","works_at Northwind, interested_in Project Helios"]]},
+    {go:"s-norm",      c:[["a","PredicateNormalizer"],["t"," "],["y","works_at → employed_by"],["t","; interested_in is new"]]},
+    {go:"s-desc",      c:[["a","DescriptionWriter"],["t"," new page → 2–3 sentence summary"]]},
+    {go:"s-time",      c:[["a","TimelineAgent"],["t"," + dated entry (2026-06-10)"]]},
+    {go:"s-graph",     c:[["a","graph_sync"],["t"," 5 entities, ~7 edges (1 "],["g","structural"],["t","), ~10 chunks embedded"]]}
+  ];
+  var chips = Array.prototype.slice.call(document.querySelectorAll("#track .stage"));
+  var fill = document.getElementById("fill");
+  var con = document.getElementById("console");
+  var btn = document.getElementById("play");
+  var ents = Array.prototype.slice.call(document.querySelectorAll("#entrow [data-e]"));
+  var timer = null;
+
+  function clearConsole(){ con.innerHTML = ""; }
+  function log(parts){
+    var d = document.createElement("div"); d.className = "ln";
+    parts.forEach(function(p){ var s=document.createElement("span"); s.className=p[0]; s.textContent=p[1]; d.appendChild(s); });
+    con.appendChild(d); con.scrollTop = con.scrollHeight;
+  }
+  function resetPlayer(){
+    if (timer) { clearTimeout(timer); timer = null; }
+    chips.forEach(function(c){ c.classList.remove("active","done"); });
+    ents.forEach(function(e){ e.classList.remove("lit"); });
+    fill.style.width = "0";
+    clearConsole();
+  }
+  function step(i){
+    if (i >= stages.length){
+      chips[chips.length-1].classList.remove("active");
+      chips[chips.length-1].classList.add("done");
+      btn.disabled = false; btn.textContent = "▶ Run again";
+      drawGraph();
+      return;
+    }
+    chips.forEach(function(c,j){ if(j<i) c.classList.add("done"); });
+    chips[i].classList.remove("done"); chips[i].classList.add("active");
+    fill.style.width = (i/(stages.length-1))*100 + "%";
+    log(stages[i].c);
+    if (stages[i].go === "s-inject") ents.forEach(function(e,k){ setTimeout(function(){ e.classList.add("lit"); }, k*90); });
+    timer = setTimeout(function(){ step(i+1); }, 850);
+  }
+  btn.addEventListener("click", function(){
+    resetPlayer(); resetGraph(); btn.disabled = true; btn.textContent = "running…";
+    timer = setTimeout(function(){ step(0); }, 150);
+  });
+  // jump-to-section on chip click (when idle)
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      if (btn.disabled) return;
+      var el = document.getElementById(c.getAttribute("data-go"));
+      if (el) el.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+  });
+
+  // ---- animated graph --------------------------------------------------
+  var nodes = Array.prototype.slice.call(document.querySelectorAll("#graph [data-n]"));
+  var edges = Array.prototype.slice.call(document.querySelectorAll("#graph [data-edge]"));
+  var elabels = Array.prototype.slice.call(document.querySelectorAll("#graph [data-el]"));
+  function resetGraph(){
+    nodes.forEach(function(n){ n.classList.remove("show"); });
+    edges.forEach(function(e){ e.classList.remove("drawn"); });
+    elabels.forEach(function(l){ l.classList.remove("show"); });
+  }
+  function drawGraph(){
+    resetGraph();
+    nodes.forEach(function(n,i){ setTimeout(function(){ n.classList.add("show"); }, i*120); });
+    var base = nodes.length*120 + 150;
+    edges.forEach(function(e,i){ setTimeout(function(){ e.classList.add("drawn"); }, base + i*260); });
+    elabels.forEach(function(l,i){ setTimeout(function(){ l.classList.add("show"); }, base + i*260 + 200); });
+  }
+  document.getElementById("greplay").addEventListener("click", drawGraph);
+  // draw the graph once on first scroll into view, so the page isn't dead on load
+  var seen = false;
+  window.addEventListener("scroll", function(){
+    if (seen) return;
+    var r = document.getElementById("graph").getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0){ seen = true; drawGraph(); }
+  }, {passive:true});
+})();
+</script>
+</body>
+</html>

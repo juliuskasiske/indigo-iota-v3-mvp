@@ -1,0 +1,18 @@
+-- 0021_comprehension_debug_trace.sql
+-- ---------------------------------------------------------------------------
+-- A per-email debug trace of the comprehend run, for inspecting the agents'
+-- decisions after the fact (the Tenant Observability tab surfaces it on demand).
+--
+-- The persisted entity/relationship rows show only the FINAL result — never what
+-- the RelationshipAgent actually proposed, which candidates it saw, what the
+-- PredicateNormalizer collapsed, or what got dropped. This JSONB blob captures
+-- that full context per comprehended email: the English text the agents saw, the
+-- entities that entered the fan-out, the structural (header-grounded) edges, and
+-- per subject — candidates, the raw model output, dropped unknown objects, the
+-- accepted triples, and each raw→canonical normalization decision.
+--
+-- One row per captured event (comprehension_log is UPSERTed on captured_event_id),
+-- so re-comprehending an email overwrites its trace. Nullable: older rows and any
+-- email comprehended before this column existed simply have no trace.
+-- ---------------------------------------------------------------------------
+ALTER TABLE comprehension_log ADD COLUMN IF NOT EXISTS debug_trace JSONB;

@@ -1,0 +1,30 @@
+{
+  "frontmatter": {
+    "type": "project",
+    "name": "Transformation at ACCHCO",
+    "status": "active",
+    "tags": []
+  },
+  "description": "The project, titled “Transformation at ACCHCO,” is a full operational transformation for Alexandria Container & Cargo Handling Co.’s main container terminal at the Port of Alexandria, encompassing yard restructuring, berth scheduling, and equipment deployment. Felix has been asked to lead the modeling effort for this engagement.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "Michael Dempsey told Felix that following an RFP from Alexandria Container & Cargo Handling Co., a first call with Operations Director Yusuf El‑Masri confirmed ACCHCO’s demand for a comprehensive operational transformation—yard restructuring, berth scheduling, and equipment deployment—and assigned Felix to lead the modeling for the project dubbed “Transformation at ACCHCO”. "
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "Michael Dempsey instructed Felix to lead modeling for a full operational transformation—including yard restructuring, berth scheduling, and equipment deployment—of Alexandria Container & Cargo Handling Co's main container terminal at the Port of Alexandria, naming the engagement \"Transformation at ACCHCO\"."
+    },
+    {
+      "date": "2026-03-10",
+      "entry": "Yusuf El-Masri, Operations Director of Alexandria Container & Cargo Handling Co, confirmed proceeding with the three‑phase Transformation at ACCHCO engagement and requested a kickoff meeting to be scheduled for the week of March 23 at the company's Alexandria offices."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "has_client",
+      "object": "Alexandria Container & Cargo Handling Co.",
+      "object_type": "company"
+    }
+  ]
+}

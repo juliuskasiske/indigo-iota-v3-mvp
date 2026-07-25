@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7 · MCP &amp; connectors — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html">2 · Architecture</a>
+    <a href="03-data-model.html">3 · Data model</a>
+    <a href="04-frontend-pages.html">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html" class="active">7 · MCP &amp; connectors</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 7</p>
+  <h1>The MCP server — letting Claude &amp; ChatGPT use the brain</h1>
+  <p class="lead">Everything so far assumed a <em>person</em> using the website. This chapter is about the
+  newest doorway into the same brain: a way for an AI assistant — Claude or ChatGPT — to read a customer's
+  brain directly, as a set of tools, on that person's behalf. It's the most security-sensitive thing we
+  built, so we build the idea up slowly and show exactly what each step protects against.</p>
+
+  <div class="callout">
+    The short version: a customer can paste one URL into Claude/ChatGPT&apos;s &ldquo;connectors&rdquo; and,
+    after a one-click approval, the assistant can search and ask their brain — scoped to <strong>one
+    workspace</strong>, <strong>read-only</strong>, and <strong>revocable</strong>, without ever handing the
+    assistant a password.
+  </div>
+
+  <h2>What is MCP, and why do we need it?</h2>
+  <p><strong>MCP (Model Context Protocol)</strong> is a small, shared standard for how an AI assistant
+  discovers and calls &ldquo;tools&rdquo; on an outside server. Claude and ChatGPT both speak it. If our
+  server exposes the brain as MCP tools, those assistants can use it with no custom integration on either
+  side — the user just adds a &ldquo;connector&rdquo; by URL.</p>
+  <p>Why bother, when we already have an <code>/api/qa/ask</code> on the website? Because the value is letting
+  someone work the brain <em>from inside the assistant they already use</em> — &ldquo;Claude, what do we know
+  about the ACCHCO project?&rdquo; — mixing brain facts with everything else Claude can do, instead of
+  switching to our site for every question.</p>
+
+  <div class="callout analogy">
+    Think of the brain as a reference library. The website is the <strong>reading room</strong> where a
+    member walks in and looks things up. MCP is a <strong>library card you can lend to an assistant</strong>:
+    the assistant can fetch from the stacks for you — but only the shelves the card allows, and you can cancel
+    the card at any time.
+  </div>
+
+  <h2>Two doorways into the same brain</h2>
+  <p>The backend now answers on two different doors, and it&apos;s worth keeping them straight:</p>
+  <table>
+    <tr><th>Door</th><th>Who knocks</th><th>How they prove who they are</th><th>Code</th></tr>
+    <tr>
+      <td><code>/api/*</code>, <code>/auth/*</code></td>
+      <td>a <strong>person</strong> in our website</td>
+      <td>the <code>iota_session</code> cookie (Chapter 5)</td>
+      <td><code>backend/src/api/app.py</code></td>
+    </tr>
+    <tr>
+      <td><code>/mcp</code></td>
+      <td>a <strong>program</strong> (Claude/ChatGPT)</td>
+      <td>a <strong>bearer token</strong> it attaches to each call</td>
+      <td><code>backend/src/mcp_server.py</code></td>
+    </tr>
+  </table>
+  <p>The <strong>cookie vs. bearer token</strong> split is the whole reason MCP needed new code. A cookie is
+  something a <em>browser</em> sends automatically on our own site. A bearer token is something a
+  <em>program</em> stores and attaches on purpose (<code>Authorization: Bearer …</code>). The brain data and
+  tools underneath are identical; only the doorway and the proof-of-identity differ.</p>
+
+  <h2>The tools on offer</h2>
+  <p>The MCP server exposes seven <strong>read-only</strong> tools over each tenant&apos;s brain. They all
+  return raw facts (no AI, no cost) — the connector never spends the workspace&apos;s LLM credits.</p>
+  <table>
+    <tr><th>Tool</th><th>What it returns</th><th>Costs credits?</th></tr>
+    <tr><td><code>whoami</code></td><td>the connected member + the best-matching brain person (&ldquo;you&rdquo;, by email or fuzzy name) + the principal</td><td>no</td></tr>
+    <tr><td><code>search_brain</code></td><td>ranked chunks for a query (vector + keyword search)</td><td>no</td></tr>
+    <tr><td><code>get_entity</code></td><td>the full page for one person / company / project</td><td>no</td></tr>
+    <tr><td><code>list_entities</code></td><td>browse everything in the brain</td><td>no</td></tr>
+    <tr><td><code>get_neighbors</code></td><td>one hop out in the relationship graph</td><td>no</td></tr>
+    <tr><td><code>recent_questions</code></td><td>what&apos;s been asked before</td><td>no</td></tr>
+    <tr><td><code>render_subgraph</code></td><td>a PNG picture of an entity&apos;s 1-hop network (drawn server-side, for the human to see)</td><td>no</td></tr>
+  </table>
+  <div class="callout">Deliberately, the tools hand the assistant <em>raw</em> chunks + graph context and let
+  <em>it</em> do the reasoning — that&apos;s usually better, and it keeps every credit-spending model call on
+  the assistant&apos;s side, not the brain&apos;s. (There used to be a server-side <code>ask</code> tool that
+  ran the brain&apos;s own RAG synthesis; it was removed so a connector can&apos;t run up a bill — the
+  product&apos;s in-app Ask page still does synthesis when a human asks there.)</div>
+
+  <h2>The hard part: how does the assistant get in?</h2>
+  <p>We need the assistant to call <code>/mcp</code> with proof of identity. The naïve idea — &ldquo;give it
+  an API key&rdquo; — fails three tests at once:</p>
+  <ul>
+    <li>The user would have to <strong>hand a long-lived secret</strong> to a third-party program. If it
+    leaks, that&apos;s permanent, total access.</li>
+    <li>A raw key has <strong>no scope</strong> — it can&apos;t say &ldquo;only this one workspace,
+    read-only.&rdquo;</li>
+    <li>There&apos;s <strong>no clean way to revoke</strong> it without disrupting the user.</li>
+  </ul>
+  <p>This exact problem — <em>let a third-party app do a limited thing on my behalf without my password, and
+  let me revoke it anytime</em> — is what <strong>OAuth</strong> was invented for. So we built two layers, in
+  two phases.</p>
+
+  <h2>Phase 1 — personal access tokens (the simple bearer)</h2>
+  <p>The first, simplest layer: an admin can mint a <strong>personal access token (PAT)</strong> in the Admin
+  Center — a long random string like <code>iota_mcp_…</code>. It&apos;s bound to one member + one workspace,
+  carries scopes, and is revocable. We store only its <strong>SHA-256 hash</strong> (the raw value is shown
+  once), so a database leak reveals nothing usable.</p>
+  <p>You paste that token into a generic MCP client and every call is authenticated and tenant-scoped. It&apos;s
+  a real, working credential — but it can&apos;t power the polished <em>one-click</em> &ldquo;Add
+  connector&rdquo; experience that Claude/ChatGPT offer. For that we need real OAuth.</p>
+  <p class="small">Code: <code>backend/src/auth/mcp_tokens.py</code> · table <code>mcp_tokens</code> (Chapter 3).</p>
+
+  <h2>Phase 2 — we become an OAuth server</h2>
+  <p>Here&apos;s the mental flip worth pausing on. In the <strong>Microsoft sign-in</strong> flow (Chapter 5),
+  <em>we</em> are the one <em>asking</em> Microsoft to vouch for a user — we are the OAuth <em>client</em>.
+  For MCP it&apos;s the mirror image: <strong>we are the authority that Claude asks.</strong> We play
+  Microsoft&apos;s old role. Same protocol, our chair moved to the other side of the table.</p>
+
+  <p>Four roles are in play, and naming them makes the diagram readable:</p>
+  <table>
+    <tr><th>Role</th><th>Who, here</th></tr>
+    <tr><td>Resource Owner</td><td>the human (owns the brain data)</td></tr>
+    <tr><td>Client</td><td>Claude / ChatGPT (wants access)</td></tr>
+    <tr><td>Authorization Server</td><td><strong>us</strong> — issues tokens after the human consents</td></tr>
+    <tr><td>Resource Server</td><td><strong>us</strong> — the <code>/mcp</code> endpoint that holds the data</td></tr>
+  </table>
+
+  <h3>The connect flow, step by step</h3>
+  <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as User's browser
+  participant C as Claude (the client)
+  participant I as Indigo Iota (auth server)
+  C->>I: discover (.well-known) + register itself (DCR)
+  C-->>U: open /authorize in the browser
+  U->>I: GET /authorize (with a PKCE "challenge")
+  I-->>U: redirect to our /mcp/consent page
+  Note over U,I: user signs in (reusing iota_session)<br/>and picks ONE workspace, clicks Allow
+  U->>I: POST /mcp/consent (Allow + workspace)
+  I-->>U: redirect back to Claude with a one-time code
+  U-->>C: browser hands the code to Claude
+  C->>I: POST /token (code + PKCE "verifier")
+  I-->>C: access token (1h) + refresh token
+  C->>I: POST /mcp  (Authorization: Bearer …) → tools run
+  </div>
+
+  <h3>What each step is defending against</h3>
+  <ul>
+    <li><strong>Discovery + registration.</strong> Claude has never met our server, and we can&apos;t
+    pre-arrange with every Claude in the world. So we publish standard <code>/.well-known/…</code> metadata it
+    reads, and it <em>registers itself</em> on the fly (&ldquo;Dynamic Client Registration&rdquo;). This is
+    why a connector &ldquo;just works&rdquo; from a URL.</li>
+    <li><strong>Authorize → consent.</strong> Only the <em>user</em> may approve, which means we must know who
+    they are — but Claude must stay out of that. So we bounce the user&apos;s <em>browser</em> to our own
+    consent page and <strong>reuse the <code>iota_session</code> cookie</strong> to identify them. OAuth
+    doesn&apos;t replace our login; it sits on top of it. On the page they pick <strong>one</strong> workspace
+    (we check it&apos;s actually theirs) and click Allow.</li>
+    <li><strong>The one-time code + PKCE.</strong> The code travels back through the browser&apos;s URL, which
+    can leak. So before starting, Claude invents a random secret and sends us only its <em>hash</em> (the
+    &ldquo;challenge&rdquo;). At the token step it must present the original secret (the &ldquo;verifier&rdquo;);
+    we hash it and check it matches. A thief who grabs the code from a URL doesn&apos;t have the verifier, so
+    the code is useless. (Codes are single-use and expire in minutes.)</li>
+    <li><strong>Two tokens.</strong> We return a short-lived <strong>access</strong> token (~1 hour — the key
+    Claude attaches to each call) and a long-lived <strong>refresh</strong> token (to get a fresh access token
+    without re-bothering the user). A leaked access token is dangerous only briefly; the powerful long-lived
+    one is used rarely. Refreshing <strong>rotates</strong> both and revokes the old pair, so a stolen refresh
+    token dies the moment the real one is used.</li>
+  </ul>
+
+  <div class="callout">
+    We didn&apos;t hand-roll the cryptography. The official MCP SDK provides the protocol machinery — discovery,
+    <code>/authorize</code>, <code>/token</code>, <code>/register</code>, <code>/revoke</code>, and the PKCE +
+    redirect checks. Our code (<code>backend/src/auth/mcp_oauth.py</code>) provides only the storage and the
+    one custom step: authenticate the human and let them pick a workspace.
+  </div>
+
+  <h2>How a tool call stays in its lane</h2>
+  <p>Once Claude has an access token, every <code>/mcp</code> call carries it. Three things then happen on our
+  side — and they&apos;re the same guardrails the website already had, reused:</p>
+  <div class="mermaid">
+flowchart TB
+  t_in["POST /mcp with a Bearer token"]
+  t_verify["Look up the token to get the<br/>member and workspace"]
+  t_open["Open ONLY that workspace brain database"]
+  t_run["Run the read tool and return raw facts"]
+  t_in --> t_verify --> t_open --> t_run
+</div>
+  <ul>
+    <li><strong>Tenant scoping.</strong> The token says which workspace; we resolve that org&apos;s brain
+    database and read <em>only</em> it. One customer&apos;s token can never touch another&apos;s brain.</li>
+    <li><strong>Read-only scope.</strong> A token carries <code>brain:read</code>. There is no
+    credit-spending tool, so a connector simply <em>cannot</em> run up an LLM bill — the calling assistant
+    does all the reasoning on its own side.</li>
+  </ul>
+
+  <h2>Where this lives in the code &amp; data</h2>
+  <table>
+    <tr><th>Piece</th><th>File / table</th></tr>
+    <tr><td>The MCP server + the six tools</td><td><code>backend/src/mcp_server.py</code></td></tr>
+    <tr><td>The OAuth authorization server</td><td><code>backend/src/auth/mcp_oauth.py</code></td></tr>
+    <tr><td>Personal access tokens (Phase 1)</td><td><code>backend/src/auth/mcp_tokens.py</code></td></tr>
+    <tr><td>The consent page (workspace picker)</td><td><code>/mcp/consent</code> in <code>backend/src/api/app.py</code></td></tr>
+    <tr><td>Tables</td><td><code>mcp_tokens</code>, <code>oauth_clients</code>, <code>oauth_auth_codes</code>, <code>oauth_tokens</code> — all in the control plane (<a href="03-data-model.html">Chapter 3</a>)</td></tr>
+  </table>
+  <p>The endpoint is the same on both run modes: <code>&lt;your-domain&gt;/mcp</code>, routed to the backend by
+  Caddy just like <code>/api</code> and <code>/auth</code>. A local <em>stdio</em> mode of the same tools also
+  exists for developers pointing Claude Desktop at the dev brain.</p>
+
+  <div class="pager">
+    <a href="06-repo-atlas.html">← Repo atlas</a>
+    <a class="next" href="index.html">Back to Home →</a>
+  </div>
+</main>
+
+<script src="mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose',
+  themeVariables: { primaryColor:'#ffffff', primaryTextColor:'#0f0f0f', primaryBorderColor:'#3812f3',
+    lineColor:'#7159f6', secondaryColor:'#ece9ff', tertiaryColor:'#f0f0ec',
+    fontFamily:'Albert Sans, ui-sans-serif, system-ui, sans-serif', fontSize:'14px' }});
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Postgres + pgvector for the Indigo Iota demo.
+#
+# The backend connects via DATABASE_URL (see backend/.env). This compose file
+# gives a reproducible DB on a non-default port (5433) so it does not collide
+# with a local Postgres.app already running on 5432.
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#   # then in backend/.env:  DATABASE_URL=postgresql://iota:iota@localhost:5433/indigo_demo
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: indigo_demo_db
+    environment:
+      POSTGRES_USER: iota
+      POSTGRES_PASSWORD: iota
+      POSTGRES_DB: indigo_demo
+    ports:
+      - "5433:5432"
+    volumes:
+      - indigo_demo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iota -d indigo_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  indigo_demo_pgdata:

@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "docker-preview",
+      "runtimeExecutable": "sleep",
+      "runtimeArgs": ["86400"],
+      "port": 8080
+    },
+    {
+      "name": "wl-consultancy",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/juliuskasiske/Documents/Test_2 && npm run dev -- --port 3100"],
+      "port": 3100
+    },
+    {
+      "name": "explainer",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-I", "-c", "import functools,http.server,socketserver; D='/tmp/iota_explainer'; H=functools.partial(http.server.SimpleHTTPRequestHandler, directory=D); socketserver.TCPServer(('127.0.0.1',8099), H).serve_forever()"],
+      "port": 8099
+    }
+  ]
+}

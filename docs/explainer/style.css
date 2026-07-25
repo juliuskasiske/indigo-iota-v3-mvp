@@ -1,0 +1,290 @@
+/* ============================================================================
+   Indigo Iota — repo explainer styles
+   Built to the brand style guide (frontend/docs/build-style-guide.py):
+     · Two-colour system — cream canvas #F0F0EC + indigo accent #3812F3
+       (indigo is the spice, used sparingly; black is the only other foreground)
+     · Albert Sans for all UI/body/headings
+     · Instrument Serif italic ONLY for the "iota" in the wordmark
+     · Albert Sans also carries the technical chrome (labels, code, figures)
+   Fonts are bundled locally in ./fonts so the guide renders fully offline.
+   ========================================================================== */
+
+/* ---- brand fonts (local, offline) ---- */
+@font-face { font-family:"Albert Sans"; font-weight:400; font-style:normal;
+  font-display:swap; src:url("fonts/albert-400.woff2") format("woff2"); }
+@font-face { font-family:"Albert Sans"; font-weight:500; font-style:normal;
+  font-display:swap; src:url("fonts/albert-500.woff2") format("woff2"); }
+@font-face { font-family:"Albert Sans"; font-weight:700; font-style:normal;
+  font-display:swap; src:url("fonts/albert-700.woff2") format("woff2"); }
+@font-face { font-family:"Albert Sans"; font-weight:800; font-style:normal;
+  font-display:swap; src:url("fonts/albert-800.woff2") format("woff2"); }
+@font-face { font-family:"Instrument Serif"; font-weight:400; font-style:italic;
+  font-display:swap; src:url("fonts/instrument-italic.woff2") format("woff2"); }
+
+/* ---- brand tokens (exact match to globals.css / the style guide) ---- */
+:root {
+  --cream: #f0f0ec;          /* canvas */
+  --card: #ffffff;           /* elevated cards */
+  --soft: #e4e3db;           /* hover / insets */
+  --indigo: #3812f3;         /* the single accent */
+  --indigo-soft: #7159f6;    /* gradients / hover only */
+  --indigo-tint: rgba(56,18,243,0.07);   /* faint accent wash */
+  --indigo-tint-strong: rgba(56,18,243,0.12);
+  --ink: #0f0f0f;            /* body text */
+  --muted: #616161;          /* secondary text */
+  --subtle: #8c8c8c;         /* hints, labels */
+  --border: #d0cfc8;
+  --border-strong: #b4b3a9;
+  --success: #1c8a52;
+  --warning: #cf7f10;
+  --destructive: #cd2929;
+
+  --sans: "Albert Sans", ui-sans-serif, system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --mono: var(--sans);   /* technical chrome now rides on Albert Sans */
+
+  --radius: 10px;
+  --maxw: 940px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- top navigation ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(240,240,236,0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 12px 24px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+}
+/* The wordmark: "indigo" ExtraBold + "iota" Instrument Serif italic. */
+.brand {
+  font-family: var(--sans); font-weight: 800; letter-spacing: -0.03em;
+  font-size: 19px; color: var(--indigo); text-decoration: none; white-space: nowrap;
+}
+.brand .iota { font-family: var(--serif); font-weight: 400; font-style: italic;
+  letter-spacing: 0; margin-left: 0.04em; }
+.nav { display: flex; gap: 2px; flex-wrap: wrap; }
+.nav a {
+  font-size: 13px; color: var(--muted); text-decoration: none;
+  padding: 5px 10px; border-radius: 7px; white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+.nav a:hover { background: var(--soft); color: var(--ink); }
+/* Active = quiet indigo wash + indigo text, NOT a solid indigo block. */
+.nav a.active { background: var(--indigo-tint-strong); color: var(--indigo); font-weight: 500; }
+
+/* ---- layout ---- */
+main { max-width: var(--maxw); margin: 0 auto; padding: 36px 24px 120px; }
+
+/* Section label — Albert Sans, uppercase, indigo (matches the guide's page header). */
+.kicker {
+  font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em;
+  font-size: 12px; font-weight: 400; color: var(--indigo); margin: 0 0 10px;
+}
+h1 { font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 16px; font-weight: 800; }
+h2 {
+  font-size: 27px; letter-spacing: -0.02em; margin: 52px 0 14px; font-weight: 700;
+  padding-top: 16px; border-top: 1px solid var(--border);
+}
+h3 { font-size: 19px; letter-spacing: -0.01em; margin: 30px 0 8px; font-weight: 700; }
+h4 { font-size: 15px; margin: 22px 0 6px; font-weight: 500; color: var(--muted); }
+p { margin: 12px 0; }
+a { color: var(--indigo); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.lead { font-size: 20px; color: var(--muted); line-height: 1.55; margin: 0 0 8px; font-weight: 400; }
+small, .small { font-size: 14px; color: var(--muted); }
+strong { font-weight: 700; }
+em { font-style: italic; }
+
+ul, ol { padding-left: 22px; }
+li { margin: 6px 0; }
+
+/* Technical chrome → Albert Sans on a soft inset. */
+code {
+  font-family: var(--mono); font-size: 0.83em;
+  background: var(--soft); padding: 1px 6px; border-radius: 5px;
+  border: 1px solid var(--border); color: var(--ink);
+}
+pre {
+  background: var(--soft); color: var(--ink); padding: 16px 18px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow-x: auto; font-size: 13.5px; line-height: 1.55; font-family: var(--mono);
+}
+pre code { background: none; border: none; color: inherit; padding: 0; font-size: 1em; }
+
+/* ---- cards ---- */
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 22px; margin: 18px 0;
+}
+.grid { display: grid; gap: 16px; }
+.grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 720px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+/* ---- callouts ----
+   Default = faint indigo wash + indigo rule (the accent, used sparingly).
+   Analogy = neutral white card with a grey rule (NOT a decorative colour).
+   Warn    = semantic warning, reserved for genuine cautions. */
+.callout {
+  border-left: 3px solid var(--indigo); background: var(--indigo-tint);
+  padding: 13px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; font-size: 15.5px;
+}
+.callout.analogy {
+  border-left: 3px solid var(--border-strong); background: var(--card);
+  border-top: 1px solid var(--border); border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.callout.analogy::before { content: "In plain terms — "; font-family: var(--mono);
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--indigo); }
+.callout.warn { border-left-color: var(--warning); background: rgba(207,127,16,0.08); }
+.callout.warn::before { content: "Caution — "; font-family: var(--mono); font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--warning); }
+
+/* ---- tables ---- */
+table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--soft); font-family: var(--mono); font-weight: 400; font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+tr:hover td { background: #faf9f5; }
+td code { font-size: 0.82em; white-space: nowrap; }
+
+/* ---- pills / tags ---- (mirror the badge system: tinted bg + coloured text) */
+.pill { display: inline-block; font-family: var(--sans); font-size: 11.5px; font-weight: 500;
+  padding: 2px 9px; border-radius: 999px; letter-spacing: 0.01em; vertical-align: middle; }
+.pill.live { background: var(--indigo-tint-strong); color: var(--indigo); }   /* wired to backend */
+.pill.mock { background: var(--cream); color: var(--muted); border: 1px solid var(--border-strong); } /* demo / draft */
+.pill.db   { background: rgba(28,138,82,0.13); color: var(--success); }        /* database */
+.pill.py   { background: var(--indigo-tint-strong); color: var(--indigo); }
+
+/* ---- diagrams ---- */
+.mermaid { margin: 24px 0; text-align: center; }
+figure { margin: 24px 0; }
+figure img { width: 100%; border: 1px solid var(--border); border-radius: var(--radius); display: block; }
+figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+/* ---- index hub cards ---- */
+.hub { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+@media (max-width: 720px) { .hub { grid-template-columns: 1fr; } }
+.hub a {
+  display: block; text-decoration: none; color: inherit; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
+  transition: border-color .15s, transform .15s;
+}
+.hub a:hover { border-color: var(--indigo); transform: translateY(-2px); text-decoration: none; }
+.hub .num { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--indigo); letter-spacing: .08em; }
+.hub h3 { margin: 8px 0 4px; }
+.hub p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+/* ---- file atlas ---- */
+.atlas dt { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--indigo); margin-top: 12px; }
+.atlas dd { margin: 2px 0 0; font-size: 14.5px; color: var(--ink); }
+.pathline { font-family: var(--mono); font-size: 13px; }
+
+/* ---- footer nav ---- */
+.pager { display: flex; justify-content: space-between; margin-top: 56px; padding-top: 20px;
+  border-top: 1px solid var(--border); font-size: 14px; gap: 12px; }
+.pager a { text-decoration: none; font-weight: 500; }
+.pager .next { margin-left: auto; text-align: right; }
+
+/* ============================================================================
+   INTERACTIVE — pannable ER diagrams + click-to-expand detail (chapter 3)
+   ========================================================================== */
+.erwrap { position: relative; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); margin: 18px 0 0; overflow: hidden; }
+.erwrap .mermaid { margin: 0; height: 440px; text-align: left;
+  cursor: grab; touch-action: none; user-select: none; }
+.erwrap .mermaid:active { cursor: grabbing; }
+.erwrap .mermaid svg { width: 100%; height: 100%; max-width: none; display: block; }
+.erwrap .er-entity { cursor: pointer; }
+.ertools { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; gap: 6px; }
+.ertools button { font-family: var(--mono); font-size: 15px; min-width: 30px; height: 30px;
+  padding: 0 8px; border: 1px solid var(--border); background: rgba(240,240,236,0.92);
+  color: var(--ink); border-radius: 7px; cursor: pointer; line-height: 1; backdrop-filter: blur(4px); }
+.ertools button:hover { border-color: var(--indigo); color: var(--indigo); }
+.ertools .reset { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.erhint { font-family: var(--mono); font-size: 12px; color: var(--subtle); margin: 7px 2px 0; }
+
+.er-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.er-chip { font-family: var(--mono); font-size: 12px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s; }
+.er-chip:hover { border-color: var(--indigo); color: var(--indigo); }
+.er-chip.active { background: var(--indigo-tint-strong); color: var(--indigo); border-color: var(--indigo); }
+
+.erpanel { border: 1px solid var(--border); border-left: 3px solid var(--indigo);
+  border-radius: 0 8px 8px 0; background: var(--card); padding: 15px 18px; margin: 14px 0 0; }
+.erpanel.empty { border-left-color: var(--border-strong); color: var(--muted); font-size: 15px; }
+.erpanel .filled { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--subtle); }
+.erpanel .tname { font-family: var(--mono); font-size: 15px; color: var(--indigo); margin: 1px 0 0;
+  font-weight: 700; }
+.erpanel .summary { font-size: 15.5px; margin: 8px 0 10px; }
+.erpanel .colslabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--subtle); margin: 0 0 6px; }
+.erpanel ul.cols { margin: 0; padding-left: 0; list-style: none; }
+.erpanel ul.cols li { margin: 0; padding: 7px 0; font-size: 14.5px; line-height: 1.5;
+  border-top: 1px solid var(--border); }
+.erpanel ul.cols li:first-child { border-top: 0; }
+.erpanel ul.cols li code { color: var(--indigo); font-weight: 700; margin-right: 2px; }
+.erpanel ul.cols li .cdesc { color: var(--ink, inherit); }
+
+/* ============================================================================
+   INTERACTIVE — hierarchical clickable repo tree (chapter 6)
+   ========================================================================== */
+.tree { font-family: var(--mono); font-size: 14px; margin: 18px 0; }
+.tree details { border-left: 1px solid var(--border); margin-left: 6px; padding-left: 14px; }
+.tree > details { border-left: none; margin-left: 0; padding-left: 0; }
+.tree summary { list-style: none; cursor: pointer; padding: 4px 8px; border-radius: 7px;
+  display: flex; align-items: baseline; gap: 8px; }
+.tree summary::-webkit-details-marker { display: none; }
+.tree summary:hover { background: var(--soft); }
+.tree summary .tw { color: var(--indigo); font-weight: 700; width: 13px; display: inline-block; }
+.tree details[open] > summary .tw::after { content: "−"; }
+.tree summary .tw::after { content: "+"; }
+.tree summary .leaf { color: var(--subtle); width: 13px; display: inline-block; }
+.tree .name { color: var(--ink); font-weight: 700; }
+.tree .dir > summary .name { color: var(--indigo); }
+.tree .desc { font-family: var(--sans); font-size: 13.5px; color: var(--muted); font-weight: 400; }
+.tree .file { padding: 3px 8px 3px 8px; display: flex; align-items: baseline; gap: 8px;
+  border-radius: 7px; }
+.tree .file:hover { background: #faf9f5; }
+.tree .layer-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--indigo); margin: 0 0 2px; }
+
+/* Two-column atlas: tree on the left, explanation pane on the right.
+   The left tree shows names only; clicking any folder/file fills the pane. */
+.atlas2 { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 26px; align-items: start; margin: 18px 0; }
+@media (max-width: 860px) { .atlas2 { grid-template-columns: 1fr; } }
+.atlas2 .nav-col { min-width: 0; }
+.atlas2 .pane-col { position: sticky; top: 76px; }
+.atlas2 .tree { margin: 0; }
+/* selected row highlight (mirrors the nav-active wash) */
+.tree summary.sel, .tree .file.sel { background: var(--indigo-tint-strong); }
+.tree summary.sel .name, .tree .file.sel .name { color: var(--indigo); }
+
+.atlaspane { border: 1px solid var(--border); border-left: 3px solid var(--indigo);
+  border-radius: 0 8px 8px 0; background: var(--card); padding: 16px 18px; min-height: 150px; }
+.atlaspane.empty { border-left-color: var(--border-strong); color: var(--muted); font-size: 15px; }
+.atlaspane .kind { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--subtle); }
+.atlaspane .pname { font-family: var(--mono); font-size: 16px; color: var(--indigo); font-weight: 700;
+  margin: 2px 0 0; word-break: break-word; }
+.atlaspane .pdesc { font-size: 15.5px; margin: 10px 0 0; }
+.atlaspane .ppath { font-family: var(--mono); font-size: 12px; color: var(--subtle); margin: 8px 0 0; }

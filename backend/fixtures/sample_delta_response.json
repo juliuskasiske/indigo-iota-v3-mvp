@@ -1,0 +1,210 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('fkasiske%40rpxoptimization.com')/mailFolders('inbox')/messages/delta",
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=ACCHCObatch_xY7kQ2mNp4rStUvWxZ",
+  "value": [
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0001",
+      "createdDateTime": "2026-03-02T08:14:00Z",
+      "lastModifiedDateTime": "2026-03-02T08:14:03Z",
+      "receivedDateTime": "2026-03-02T08:14:00Z",
+      "sentDateTime": "2026-03-02T08:13:50Z",
+      "hasAttachments": true,
+      "subject": "ACCHCO terminal transformation – initial scope",
+      "bodyPreview": "Felix, following the RFP from Alexandria Container & Cargo Handling Co, I've had a first call with their Operations Director, Yusuf El-Masri. ACCHCO runs the main container terminal at the Port of Alexandria and wants a full operational transformation.",
+      "importance": "high",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-SCOPE",
+      "isRead": true,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0001&viewmodel=ReadMessageItem",
+      "internetMessageId": "<scope-001-acchco@rpxoptimization.com>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Felix,</div><div><br></div><div>following the RFP from Alexandria Container &amp; Cargo Handling Co, I've had a first call with their Operations Director, Yusuf El-Masri. ACCHCO runs the main container terminal at the Port of Alexandria and wants a full operational transformation &mdash; yard restructuring, berth scheduling, and equipment deployment.</div><div><br></div><div>I'd like you to lead the modeling. Proposing we call the engagement 'Transformation at ACCHCO'.</div><div><br></div><div>Michael Dempsey<br>Managing Director, RPX Optimization (US)</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" }
+      },
+      "from": {
+        "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" } }
+      ],
+      "ccRecipients": [],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "notFlagged" }
+    },
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0002",
+      "createdDateTime": "2026-03-04T15:40:00Z",
+      "lastModifiedDateTime": "2026-03-04T15:40:02Z",
+      "receivedDateTime": "2026-03-04T15:40:00Z",
+      "sentDateTime": "2026-03-04T15:39:30Z",
+      "hasAttachments": true,
+      "subject": "RE: ACCHCO terminal transformation – initial scope",
+      "bodyPreview": "Sounds good Michael, I'll lead the modeling side. I've looked at the RFP — ACCHCO's main constraints are an aging straddle-carrier fleet and severe yard congestion in peak season. Suggest a three-phase structure: diagnostics, redesign, implementation support.",
+      "importance": "normal",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-SCOPE",
+      "isRead": true,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0002&viewmodel=ReadMessageItem",
+      "internetMessageId": "<scope-002-acchco@rpxoptimization.com>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Sounds good Michael,</div><div><br></div><div>I'll lead the modeling side. I've looked at the RFP &mdash; ACCHCO's main constraints are an aging straddle-carrier fleet and severe yard congestion in peak season. I'll prepare a project plan.</div><div><br></div><div>Suggest a three-phase structure: diagnostics, redesign, implementation support.</div><div><br></div><div>Felix Kasiske<br>Managing Director, RPX Optimization GmbH</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" }
+      },
+      "from": {
+        "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" } }
+      ],
+      "ccRecipients": [],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "notFlagged" }
+    },
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0003",
+      "createdDateTime": "2026-03-10T09:05:00Z",
+      "lastModifiedDateTime": "2026-03-10T09:05:04Z",
+      "receivedDateTime": "2026-03-10T09:05:00Z",
+      "sentDateTime": "2026-03-10T09:04:40Z",
+      "hasAttachments": false,
+      "subject": "Welcome to the project / kickoff scheduling",
+      "bodyPreview": "Dear Mr. Kasiske, thank you for the project plan. I'm Yusuf El-Masri, Operations Director at Alexandria Container & Cargo Handling Co. We are pleased to proceed with the Transformation at ACCHCO engagement.",
+      "importance": "normal",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-KICKOFF",
+      "isRead": false,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0003&viewmodel=ReadMessageItem",
+      "internetMessageId": "<kickoff-003-acchco@acchco.com.eg>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Dear Mr. Kasiske,</div><div><br></div><div>thank you for the project plan. I'm Yusuf El-Masri, Operations Director at Alexandria Container &amp; Cargo Handling Co. We are pleased to proceed with the Transformation at ACCHCO engagement. The three-phase structure works for us.</div><div><br></div><div>Can we schedule the kickoff for the week of March 23rd at our offices in Alexandria?</div><div><br></div><div>Best regards,<br>Yusuf El-Masri<br>Operations Director, Alexandria Container &amp; Cargo Handling Co</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" }
+      },
+      "from": {
+        "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" } }
+      ],
+      "ccRecipients": [
+        { "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" } }
+      ],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "notFlagged" }
+    },
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0004",
+      "createdDateTime": "2026-03-24T17:20:00Z",
+      "lastModifiedDateTime": "2026-03-24T17:20:05Z",
+      "receivedDateTime": "2026-03-24T17:20:00Z",
+      "sentDateTime": "2026-03-24T17:19:45Z",
+      "hasAttachments": false,
+      "subject": "Kickoff notes – Transformation at ACCHCO",
+      "bodyPreview": "Good kickoff in Alexandria today. Phase 1 diagnostics now underway. Yusuf gave us full access to ACCHCO's terminal operating system data. Key finding already: their yard utilization peaks at 94% — far above the 75% best-practice threshold.",
+      "importance": "normal",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-KICKOFF",
+      "isRead": false,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0004&viewmodel=ReadMessageItem",
+      "internetMessageId": "<kickoff-004-acchco@rpxoptimization.com>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Good kickoff in Alexandria today. Phase 1 diagnostics now underway.</div><div><br></div><div>Yusuf gave us full access to ACCHCO's terminal operating system data. Key finding already: their yard utilization peaks at 94% &mdash; far above the 75% best-practice threshold. Felix is building the simulation model.</div><div><br></div><div>Michael Dempsey<br>Managing Director, RPX Optimization (US)</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" }
+      },
+      "from": {
+        "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" } },
+        { "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" } }
+      ],
+      "ccRecipients": [],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "notFlagged" }
+    },
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0005",
+      "createdDateTime": "2026-04-15T11:30:00Z",
+      "lastModifiedDateTime": "2026-04-15T11:30:06Z",
+      "receivedDateTime": "2026-04-15T11:30:00Z",
+      "sentDateTime": "2026-04-15T11:29:20Z",
+      "hasAttachments": true,
+      "subject": "Phase 1 diagnostics complete",
+      "bodyPreview": "Michael, Yusuf — Phase 1 is complete. The simulation confirms the yard congestion is driven by poor block allocation, not lack of space. We can recover roughly 20% effective capacity through re-zoning alone.",
+      "importance": "high",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-PHASE1",
+      "isRead": false,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0005&viewmodel=ReadMessageItem",
+      "internetMessageId": "<phase1-005-acchco@rpxoptimization.com>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Michael, Yusuf &mdash;</div><div><br></div><div>Phase 1 is complete. The simulation confirms the yard congestion is driven by poor block allocation, not lack of space. We can recover roughly 20% effective capacity through re-zoning alone. Moving into Phase 2 redesign.</div><div><br></div><div>Yusuf, I'll need two days with your operations team in early May.</div><div><br></div><div>Felix Kasiske<br>Managing Director, RPX Optimization GmbH</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" }
+      },
+      "from": {
+        "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" } },
+        { "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" } }
+      ],
+      "ccRecipients": [],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "flagged" }
+    },
+    {
+      "id": "AAMkAGI2THVSAAA-ACCHCO0006",
+      "createdDateTime": "2026-04-16T07:50:00Z",
+      "lastModifiedDateTime": "2026-04-16T07:50:03Z",
+      "receivedDateTime": "2026-04-16T07:50:00Z",
+      "sentDateTime": "2026-04-16T07:49:30Z",
+      "hasAttachments": false,
+      "subject": "RE: Phase 1 diagnostics complete",
+      "bodyPreview": "Excellent news, Felix. A 20% capacity recovery without capital expenditure would be a major win for ACCHCO's board. My operations team is available May 5-6. I appreciate RPX's work so far.",
+      "importance": "normal",
+      "conversationId": "AAQkAGI2-CONV-ACCHCO-PHASE1",
+      "isRead": false,
+      "isDraft": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkAGI2THVSAAA-ACCHCO0006&viewmodel=ReadMessageItem",
+      "internetMessageId": "<phase1-006-acchco@acchco.com.eg>",
+      "body": {
+        "contentType": "html",
+        "content": "<html><body><div>Excellent news, Felix.</div><div><br></div><div>A 20% capacity recovery without capital expenditure would be a major win for ACCHCO's board. My operations team is available May 5-6.</div><div><br></div><div>I appreciate RPX's work so far &mdash; this is exactly the kind of insight we hoped for.</div><div><br></div><div>Yusuf El-Masri<br>Operations Director, Alexandria Container &amp; Cargo Handling Co</div></body></html>"
+      },
+      "sender": {
+        "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" }
+      },
+      "from": {
+        "emailAddress": { "name": "Yusuf El-Masri", "address": "y.elmasri@acchco.com.eg" }
+      },
+      "toRecipients": [
+        { "emailAddress": { "name": "Felix Kasiske", "address": "fkasiske@rpxoptimization.com" } }
+      ],
+      "ccRecipients": [
+        { "emailAddress": { "name": "Michael Dempsey", "address": "mdempsey@rpxoptimization.com" } }
+      ],
+      "bccRecipients": [],
+      "replyTo": [],
+      "flag": { "flagStatus": "notFlagged" }
+    }
+  ]
+}

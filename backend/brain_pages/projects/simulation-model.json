@@ -1,0 +1,22 @@
+{
+  "frontmatter": {
+    "type": "project",
+    "name": "simulation model",
+    "status": "active",
+    "tags": []
+  },
+  "description": "Following a kickoff in Alexandria, Phase 1 diagnostics have begun with full access to ACCHCO’s terminal operating system data. A key finding shows yard utilization peaks at 94%, exceeding the 75% best‑practice threshold, and Felix is currently building the simulation model.",
+  "timeline": [
+    {
+      "date": "2026-03-24",
+      "entry": "Felix began building the simulation model for ACCHCO's terminal operating system data following the Alexandria kickoff."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "has_client",
+      "object": "ACCHCO",
+      "object_type": "company"
+    }
+  ]
+}

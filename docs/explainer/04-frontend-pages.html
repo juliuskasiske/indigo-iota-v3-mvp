@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4 · The pages — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html">2 · Architecture</a>
+    <a href="03-data-model.html">3 · Data model</a>
+    <a href="04-frontend-pages.html" class="active">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
+    <a href="08-transformers.html">8 · Transformers</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 4</p>
+  <h1>Every page, and what you can do on it</h1>
+  <p class="lead">The website has nine screens. Every screenshot below is the <em>real</em> app running on a
+  laptop — not a mock-up of a mock-up. For each one you'll see what it shows, what buttons actually do, and
+  whether it's wired to the live backend or is a polished demo of a feature not yet connected.</p>
+
+  <div class="callout">
+    <strong>One thing to understand first: "live" vs "demo".</strong> The app is half real engine, half
+    showroom. Two screens — <strong>Admin</strong> and <strong>Ask</strong> — talk to the real backend and
+    the real database. The other seven are a convincing <em>demo</em>: they look and behave like the finished
+    product, but their data is hard-coded in the browser and resets on refresh. Each section is tagged so you
+    always know which is which.
+  </div>
+
+  <h2>How to read the tags</h2>
+  <p>
+    <span class="pill live">live</span> — this screen sends real HTTP requests to the backend and shows real
+    database data. Changes stick.<br>
+    <span class="pill mock">demo</span> — this screen runs entirely in the browser from canned data
+    (<code>frontend/src/lib/mock/data.ts</code>). It's for showing the intended experience; nothing is saved.
+  </p>
+  <div class="callout analogy">Think of a show home. The <strong>kitchen taps run real water</strong> (the live
+  pages) — but the <strong>fruit bowl on the counter is plastic</strong> (the demo pages). Both are there so
+  you can see what living here feels like; only some of it is plumbed in.</div>
+
+  <h2>Where the data comes from (two wires)</h2>
+  <p>Every page pulls its data down one of two wires. Knowing which wire a page uses tells you instantly
+  whether it's live or demo:</p>
+  <table>
+    <tr><th>The wire</th><th>What it is</th><th>File</th><th>Used by</th></tr>
+    <tr>
+      <td><span class="pill live">the API client</span></td>
+      <td>A small set of functions that make real HTTP calls to the backend (<code>me()</code>,
+      <code>ask()</code>, <code>credits()</code>…).</td>
+      <td><code>frontend/src/lib/api.ts</code></td>
+      <td>Admin, Ask</td>
+    </tr>
+    <tr>
+      <td><span class="pill mock">the demo store</span></td>
+      <td>An in-browser store of fake projects, seeded from a fixtures file. Lives only in memory.</td>
+      <td><code>frontend/src/lib/store/projects-store.tsx</code> + <code>lib/mock/data.ts</code></td>
+      <td>Home, Projects, New, View, Check-in, Settings</td>
+    </tr>
+  </table>
+
+  <h2>The shell every page sits inside</h2>
+  <p>Before the individual pages: all of them are wrapped in one shared frame called the <strong>AppShell</strong>
+  (<code>frontend/src/components/app-shell.tsx</code>) — the persistent left sidebar and top strip you see in
+  every screenshot. The actual page just fills the middle. The very outermost wrapper,
+  <code>frontend/src/app/layout.tsx</code>, loads the fonts and the demo store once for the whole site.</p>
+
+  <!-- ============ HOME ============ -->
+  <h2>1 · Home <span class="pill mock">demo</span> <span class="small">route <code>/</code> · file <code>src/app/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-home.png" alt="The home dashboard showing a project overview">
+    <figcaption>The landing dashboard — a single highlighted engagement with headline numbers.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> the front page you land on after opening the app. It surfaces one featured
+  project (the "LatticePay" demo engagement) with summary tiles and recent activity.</p>
+  <p><strong>What you can do:</strong> read the overview and click through into the project. The numbers and
+  activity are illustrative.</p>
+  <p><strong>Under the hood:</strong> reads <code>useProjects()</code> from the demo store and a fixed
+  <code>latticePayProject</code> object from <code>lib/mock/data.ts</code>. No backend call.</p>
+
+  <!-- ============ ADMIN ============ -->
+  <h2>2 · Admin Center <span class="pill live">live</span> <span class="small">route <code>/admin</code> · file <code>src/app/admin/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-admin.png" alt="The Admin Center dashboard: a tabbed console with Overview, Capture, Triage, Brain, Team and Usage">
+    <figcaption>The real control room. A brand-new workspace first sees a six-step setup wizard; once onboarded it becomes this tabbed dashboard — all live from the backend.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> the genuine operator console, and the most "real" screen in the app. If you
+  aren't signed in it shows a sign-in card (Microsoft SSO, native email + password + authenticator, or a dev
+  shortcut). A brand-new workspace then runs a <strong>six-step setup wizard</strong>
+  (<code>onboarding-wizard.tsx</code>): Team → Connect → Credits → Triage → Brain → Activate. Once onboarded it
+  switches to the steady-state <strong>tabbed dashboard</strong> (<code>admin-dashboard.tsx</code>). Each tab is
+  its own panel under <code>frontend/src/components/admin/</code> and calls the backend.</p>
+  <table>
+    <tr><th>Tab</th><th>What it shows / does</th><th>Panel file</th></tr>
+    <tr><td>Overview</td><td>Credits at a glance + a "brain activity" summary (emails analysed, entities mapped, questions answered).</td><td><code>admin-dashboard.tsx</code></td></tr>
+    <tr><td>Capture</td><td>Add the mailboxes to pull (Microsoft <em>or</em> IMAP) + the Exchange access-policy command, and watch sync status.</td><td><code>capture-sources-panel.tsx · ingestion-panel.tsx</code></td></tr>
+    <tr><td>Triage</td><td>Review and sign off the "what's in scope" rules — the hard gate before any mail is pulled.</td><td><code>scope-approval-panel.tsx · scope-panel.tsx</code></td></tr>
+    <tr><td>Brain</td><td>Confirm the entity types (ontology) and add optional seed entities.</td><td><code>ontology-panel.tsx · starter-entities-panel.tsx</code></td></tr>
+    <tr><td>Team</td><td>Invite and manage members + their roles (admin / consultant / viewer).</td><td><code>members-panel.tsx</code></td></tr>
+    <tr><td>Usage</td><td>The rebuilt spend view — ingestion-vs-Q&amp;A over time, broken down per member, in $ or tokens.</td><td><code>spend-by-user-panel.tsx</code></td></tr>
+  </table>
+  <div class="callout">This page is the clearest proof the backend works end-to-end: signing in sets a real
+  cookie, the balance comes from the control-plane database, and editing scope writes back to the tenant
+  database. <a href="05-flows.html">Chapter 5</a> traces two of these clicks step-by-step.</div>
+
+  <!-- ============ ASK ============ -->
+  <h2>3 · Ask <span class="pill live">live</span> <span class="small">route <code>/ask</code> · file <code>src/app/ask/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-ask.png" alt="The Ask page: the question box and the live 3-D brain knowledge graph">
+    <figcaption>The Ask page — the question box, plus the live 3-D knowledge graph of the workspace brain.</figcaption>
+  </figure>
+  <figure>
+    <img src="img/page-ask-answer.png" alt="The Ask page showing a written answer with numbered source citations">
+    <figcaption>A real answer written by the AI from the brain — with numbered citations back to the source material.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> the question box over the project brain. You type a natural-language question;
+  the backend retrieves the relevant pieces of the brain, hands them to the AI, and the AI writes an answer
+  that <em>cites its sources</em>.</p>
+  <p><strong>What you can do:</strong> type a question and submit it. You get back prose plus a list of numbered
+  sources you can expand. This is real Retrieval-Augmented Generation against the live tenant database.</p>
+  <p><strong>Under the hood:</strong> calls <code>api.ask(question)</code> → backend route <code>/api/qa/ask</code>.
+  The answer and its <code>sources</code> are real. <a href="05-flows.html">Chapter 5, flow C</a> follows this
+  request all the way down and back.</p>
+
+  <!-- ============ PROJECTS ============ -->
+  <h2>4 · Projects <span class="pill mock">demo</span> <span class="small">route <code>/projects</code> · file <code>src/app/projects/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-projects.png" alt="A list of project cards">
+    <figcaption>The list of engagements (demo data).</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> a grid of all engagements. <strong>What you can do:</strong> browse and open
+  one, or start a new one. <strong>Under the hood:</strong> <code>useProjects()</code> from the demo store —
+  the list lives in the browser only.</p>
+
+  <!-- ============ NEW PROJECT ============ -->
+  <h2>5 · New project <span class="pill mock">demo</span> <span class="small">route <code>/projects/new</code> · file <code>src/app/projects/new/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-projects-new.png" alt="The new-project creation form">
+    <figcaption>The guided "create an engagement" form.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> a multi-step form for spinning up a new engagement (name it, set scope, pick
+  connectors). <strong>What you can do:</strong> fill it in and "create" — which adds a project to the in-browser
+  store for the rest of the session. <strong>Under the hood:</strong> pure demo; in the real product this would
+  drive the onboarding/connector setup described in the data model.</p>
+
+  <!-- ============ PROJECT VIEW ============ -->
+  <h2>6 · Project view <span class="pill mock">demo</span> <span class="small">route <code>/projects/view</code> · file <code>src/app/projects/view/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-project-view.png" alt="A single project's detail page with people, timeline and graph">
+    <figcaption>The richest demo screen: one engagement's people, companies, timeline, and relationship graph.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> the "inside one project" view — the visual showcase of what a finished brain
+  looks like: entity cards, a timeline, and a knowledge-graph visual. <strong>What you can do:</strong> explore
+  the tabs and entities. <strong>Under the hood:</strong> <code>useProjects()</code> demo data. This is the
+  demo counterpart to the real data you saw on the live <em>Ask</em> page.</p>
+
+  <!-- ============ CHECK-IN ============ -->
+  <h2>7 · Check-in <span class="pill mock">demo</span> <span class="small">route <code>/projects/check-in</code> · file <code>src/app/projects/check-in/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-checkin.png" alt="A weekly check-in / status summary screen">
+    <figcaption>A periodic "what changed this week" digest (demo).</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> a status-digest screen summarising recent movement on an engagement.
+  <strong>What you can do:</strong> read the summary. <strong>Under the hood:</strong> demo store; illustrates a
+  planned recurring report.</p>
+
+  <!-- ============ SETTINGS ============ -->
+  <h2>8 · Settings <span class="pill mock">demo</span> <span class="small">route <code>/settings</code> · file <code>src/app/settings/page.tsx</code></span></h2>
+  <figure>
+    <img src="img/page-settings.png" alt="The settings page">
+    <figcaption>Workspace settings (demo).</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> account / workspace preferences. <strong>What you can do:</strong> view the
+  intended settings layout. <strong>Under the hood:</strong> reads <code>allProjects</code> from
+  <code>lib/mock/data.ts</code>; not wired to the backend.</p>
+
+  <!-- ============ CONTROL TOWER ============ -->
+  <h2>9 · Control Tower <span class="pill live">live</span> <span class="small">route <code>/control</code> · file <code>src/app/control/page.tsx</code> · owner-only</span></h2>
+  <figure>
+    <img src="img/page-control.png" alt="The owner-only Control Tower: the tenants list, the provision form, and connector status">
+    <figcaption>The platform owner's cockpit — separate from any customer workspace. Signed in with the owner passphrase, not a Microsoft or native login.</figcaption>
+  </figure>
+  <p><strong>What it is:</strong> the cross-customer admin surface <em>you</em> (the platform operator) use,
+  gated by the owner passphrase (<code>require_owner</code>) rather than a workspace login. Four tabs:</p>
+  <table>
+    <tr><th>Tab</th><th>What it does</th><th>Panel file</th></tr>
+    <tr><td>Tenants</td><td>Provision a new customer workspace and walk each one through onboarding; shows whether the shared Microsoft connector credentials are present (never their values).</td><td><code>tenants-panel.tsx · connector-status-panel.tsx</code></td></tr>
+    <tr><td>Database</td><td>A read-only inspector to browse the databases behind every workspace.</td><td><code>db-browser-panel.tsx</code></td></tr>
+    <tr><td>Guide</td><td>Three reference docs: the onboarding runbook, a from-scratch authentication explainer, and this codebase explainer.</td><td><code>onboarding-guide-panel.tsx · auth-basics-panel.tsx</code></td></tr>
+    <tr><td>Usage</td><td>Platform-wide raw spend (before customer markup), per workspace and per member.</td><td><code>platform-usage-panel.tsx</code></td></tr>
+  </table>
+
+  <h2>The whole map at a glance</h2>
+  <table>
+    <tr><th>#</th><th>Page</th><th>Route</th><th>Status</th><th>Data wire</th></tr>
+    <tr><td>1</td><td>Home</td><td><code>/</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+    <tr><td>2</td><td>Admin</td><td><code>/admin</code></td><td><span class="pill live">live</span></td><td>API client</td></tr>
+    <tr><td>3</td><td>Ask</td><td><code>/ask</code></td><td><span class="pill live">live</span></td><td>API client</td></tr>
+    <tr><td>4</td><td>Projects</td><td><code>/projects</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+    <tr><td>5</td><td>New project</td><td><code>/projects/new</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+    <tr><td>6</td><td>Project view</td><td><code>/projects/view</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+    <tr><td>7</td><td>Check-in</td><td><code>/projects/check-in</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+    <tr><td>8</td><td>Settings</td><td><code>/settings</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
+  </table>
+  <div class="callout">Two live pages, six demo pages, all sharing one shell. The next chapter shows what
+  actually <em>happens</em> when you click on the live ones.</div>
+
+  <div class="pager">
+    <a href="03-data-model.html">← Data model</a>
+    <a class="next" href="05-flows.html">Next: The flows →</a>
+  </div>
+</main>
+
+<script src="mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose',
+  themeVariables: { primaryColor:'#ffffff', primaryTextColor:'#0f0f0f', primaryBorderColor:'#3812f3',
+    lineColor:'#7159f6', secondaryColor:'#ece9ff', tertiaryColor:'#f0f0ec',
+    fontFamily:'Albert Sans, ui-sans-serif, system-ui, sans-serif', fontSize:'14px' }});
+</script>
+</body>
+</html>

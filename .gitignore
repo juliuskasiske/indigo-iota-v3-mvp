@@ -1,0 +1,29 @@
+# Secrets / env
+.env
+**/.env
+**/.env.prod
+**/.env.local
+!**/.env.example
+!**/.env.prod.example
+!**/.env.local.example
+
+# Connector keypairs / certs — private keys must NEVER be committed.
+secrets/
+**/secrets/
+*.key
+*.pem
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+backend/data/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store

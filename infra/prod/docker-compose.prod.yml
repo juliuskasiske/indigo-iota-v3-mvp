@@ -1,0 +1,112 @@
+# Production stack for a single Hetzner box (Falkenstein / Nuremberg, Germany).
+# Postgres, the API, and the static Admin Center / Q&A site all run here; data
+# never leaves the EU. The LLM stays on LLMBase (EU); embeddings are local.
+#
+# Run from the repo root, pointing at the prod secrets file:
+#   docker compose --env-file infra/prod/.env.prod \
+#       -f infra/prod/docker-compose.prod.yml up -d --build
+#
+# infra/prod/.env.prod is chmod 600 and NEVER committed (see deploy.sh).
+
+name: indigo-iota
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Must equal the database name embedded in DATABASE_URL (the default
+      # brain DB). The control DB + tenant brain DBs are created on top of this.
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Direct host-path bind mount to the Hetzner persistent Volume.
+      # /mnt/pgdata/pgdata is created + owned by setup-volume.sh.
+      # Data survives instance rebuilds: detach Volume, attach to new server,
+      # re-run deploy.sh — no data loss.
+      - /mnt/pgdata/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # NOT published to the host: only the api service reaches it over the
+    # internal compose network. Smaller attack surface, no public Postgres.
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/prod/backend.Dockerfile
+    image: indigo-iota-api
+    restart: unless-stopped
+    env_file: .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Persist the embedding model across image rebuilds.
+      - models:/opt/models
+      # Read-only secrets dir (host: infra/prod/secrets/, gitignored). Drop key
+      # files here — e.g. the Google Drive service-account key — and point the
+      # matching env var at its in-container path, e.g.
+      #   GDRIVE_SERVICE_ACCOUNT_JSON=/secrets/gdrive-key.json
+      # Docker creates the host dir if absent, so this is harmless when empty.
+      - ./secrets:/secrets:ro
+    # No brain_pages volume needed: brain pages live as JSONB rows in each
+    # tenant's Postgres DB (the `db` service), so they survive rebuilds and are
+    # shared with the `sync` container automatically.
+    # No host port: only the edge (Caddy) reaches it on the internal network.
+
+  # Always-on mail sync: pulls each configured mailbox on a timer so every
+  # tenant's brain stays current without anyone running the CLI by hand.
+  # Reuses the api image (same source), but swaps the entrypoint from "migrate
+  # + serve" to the scheduler loop — migrations are owned by the api service,
+  # and `depends_on: api healthy` guarantees they have already run.
+  #
+  # Configure the targets in infra/prod/.env.prod (NEVER committed):
+  #   IOTA_SYNC_TARGETS=acme:ops@acme.com,acme:sales@acme.com
+  #   IOTA_SYNC_INTERVAL_SECONDS=600   # optional, default 600
+  #   IOTA_SYNC_PROCESS=1              # optional: also extract after each pull
+  # Live sync needs GRAPH_* creds + admin consent; until then leave
+  # IOTA_SYNC_TARGETS empty (the loop idles) or set IOTA_SYNC_FROM_FILE.
+  sync:
+    image: indigo-iota-api
+    restart: unless-stopped
+    env_file: .env.prod
+    entrypoint: ["python", "-m", "src.ingestion.scheduler"]
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    volumes:
+      # Same local embedding model the scope gate needs.
+      - models:/opt/models
+      # Same read-only secrets dir as the api (host: infra/prod/secrets/) so the
+      # Drive connector can read its key file once Drive ingestion ships.
+      - ./secrets:/secrets:ro
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/prod/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    # Only the two values the Caddyfile needs — the edge never sees DB/LLM
+    # secrets. Interpolated from --env-file infra/prod/.env.prod.
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data      # ACME account + issued certificates (persist!)
+      - caddy_config:/config
+
+volumes:
+  models:
+  caddy_data:
+  caddy_config:

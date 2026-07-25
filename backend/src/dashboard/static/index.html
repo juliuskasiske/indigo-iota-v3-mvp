@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brain Graph</title>
+
+    <link rel="icon" type="image/png" href="/favicon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      id="brand-font"
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <link rel="stylesheet" href="/style.css" />
+
+    <script src="https://unpkg.com/cytoscape@3.30.0/dist/cytoscape.min.js"></script>
+    <!-- fcose's peer deps must load BEFORE cytoscape-fcose itself -->
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+    <!-- Markdown renderer for the Search-tab answer pane -->
+    <script src="https://unpkg.com/marked@13.0.3/marked.min.js"></script>
+  </head>
+  <body>
+    <!-- Dashboard: graph loads from the DB on open, fills in live as mail is enriched. -->
+    <div id="dashboard" hidden>
+      <header>
+        <div class="header-left">
+          <img id="logo" class="logo" alt="" />
+          <div class="brand-text">
+            <span class="product">Brain</span>
+            <span class="subtitle">knowledge graph</span>
+          </div>
+          <nav class="tabs" role="tablist" aria-label="dashboard tabs">
+            <button class="tab" data-tab="kg" aria-pressed="true">
+              Knowledge Graph
+            </button>
+            <button class="tab" data-tab="search" aria-pressed="false">
+              Search
+            </button>
+          </nav>
+        </div>
+        <div class="header-right">
+          <div
+            id="token-counter"
+            class="token-counter"
+            title="LLM tokens used since last reset"
+          >
+            <span class="token-counter-label">tokens</span>
+            <span id="token-counter-value">0</span>
+          </div>
+          <div id="filters" role="group" aria-label="filter by entity type">
+            <button class="filter-pill" data-type="person" aria-pressed="true">
+              <span class="dot dot-person"></span>persons
+            </button>
+            <button class="filter-pill" data-type="company" aria-pressed="true">
+              <span class="dot dot-company"></span>companies
+            </button>
+            <button class="filter-pill" data-type="project" aria-pressed="true">
+              <span class="dot dot-project"></span>projects
+            </button>
+          </div>
+          <button id="enrich" type="button" class="primary-button">
+            Enrich from emails
+          </button>
+          <button id="relayout" type="button" class="ghost-button">
+            re-layout
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <!-- Tab: Knowledge Graph (default) -->
+        <div id="tab-kg" class="tab-view" data-tab="kg">
+          <div id="graph"></div>
+          <aside id="details">
+            <p class="hint">Click a node to see its brain page.</p>
+          </aside>
+        </div>
+
+        <!-- Tab: Search (RAG with graph augmentation) -->
+        <div id="tab-search" class="tab-view" data-tab="search" hidden>
+          <aside class="question-history" aria-label="question history">
+            <button type="button" class="new-question-btn" id="new-question-btn">
+              <span class="new-question-icon">+</span>
+              <span>New question</span>
+            </button>
+            <div class="question-list-header">Recent questions</div>
+            <div class="question-list" id="question-list">
+              <div class="question-empty">No questions yet.</div>
+            </div>
+          </aside>
+          <div class="search-main">
+            <div class="search-tab">
+              <form class="ask-form" id="ask-form" autocomplete="off">
+                <input
+                  id="ask-input"
+                  type="text"
+                  placeholder="Ask anything about your brain…"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="submit" class="primary-button" id="ask-submit">
+                  Ask
+                </button>
+              </form>
+
+              <p class="ask-hint" id="ask-hint">
+                Try: <em>"Who leads the ACCHCO project?"</em> · <em>"What did
+                Yusuf say about Phase 1?"</em> · <em>"Which companies are
+                clients?"</em>
+              </p>
+
+              <div class="ask-results" id="ask-results" hidden>
+                <section class="answer-pane" aria-label="answer">
+                  <div class="answer-question" id="answer-question"></div>
+                  <div class="answer-body" id="answer-body">
+                    <div class="answer-placeholder">Synthesizing…</div>
+                  </div>
+                </section>
+                <aside class="sources-pane" aria-label="sources">
+                  <h3>
+                    Sources
+                    <span class="sources-legend">
+                      <span class="legend-dot legend-vector"></span>vector
+                      <span class="legend-dot legend-graph"></span>graph
+                    </span>
+                  </h3>
+                  <div id="sources-list"></div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Floating "currently processing" card during /api/enrich. -->
+      <div id="email-progress" class="email-progress" hidden>
+        <div class="email-progress-header">
+          <span class="email-progress-dot"></span>
+          <span class="email-progress-label">Processing email</span>
+        </div>
+        <div class="email-progress-meta">
+          <span id="email-from"></span>
+          <span id="email-date"></span>
+        </div>
+        <div id="email-subject" class="email-progress-subject"></div>
+        <div id="email-snippet" class="email-progress-snippet"></div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

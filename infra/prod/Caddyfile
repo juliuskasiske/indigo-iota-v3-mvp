@@ -1,0 +1,31 @@
+# Caddy edge config. Domain + ACME email come from the environment
+# (APP_DOMAIN, ACME_EMAIL), injected by docker-compose.prod.yml.
+#
+# Caddy obtains + renews a Let's Encrypt certificate automatically and serves
+# the static Admin Center / Q&A site, proxying the API on the same origin.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# API, auth, health and the remote MCP endpoint live on the app's own
+	# origin. First-party cookies, no CORS. Everything else is the static site.
+	# /.well-known/acme-challenge/* must NOT go to the API — Caddy handles it
+	# internally to prove domain ownership to Let's Encrypt. Only the OAuth
+	# discovery paths need to reach the API.
+	@api path /api/* /auth/* /healthz /mcp /mcp/* /authorize /token /register /revoke /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		# Static export uses trailingSlash -> /route/index.html. Fall back to
+		# the SPA shell so client-side routes (e.g. /projects/view?id=) resolve.
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+}

@@ -1,0 +1,86 @@
+{
+  "frontmatter": {
+    "type": "person",
+    "name": "Felix Kasiske",
+    "role": "Managing Director",
+    "email": "FKasiske@rpxoptimization.com",
+    "location": null,
+    "relationship": "internal",
+    "tags": []
+  },
+  "description": "Dr. Felix Kasiske is the Managing Director of RPX Optimization GmbH. He can be contacted at +49 177 258 2523 or by email at FKasiske@rpxoptimization.com.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "Felix Kasiske was asked by Michael Dempsey to lead the modeling for the \"Transformation at ACCHCO\" engagement, a full operational transformation project for Alexandria Container & Cargo Handling Co."
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "Felix Kasiske was tasked by Michael Dempsey to lead the modeling for the 'Transformation at ACCHCO' engagement, a full operational transformation project for Alexandria Container & Cargo Handling Co."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "Felix Kasiske, Managing Director of RPX Optimization GmbH, stated that he will lead the modeling side of the ACCHCO project, has reviewed the RFP highlighting an aging straddle‑carrier fleet and peak‑season yard congestion, and will prepare a project plan proposing a three‑phase diagnostics, redesign, and implementation support structure."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "Felix Kasiske, Managing Director of RPX Optimization GmbH, agreed to lead the modeling side of ACCHCO's project, identified its aging straddle‑carrier fleet and peak‑season yard congestion as main constraints, and proposed a three‑phase plan of diagnostics, redesign, and implementation support."
+    },
+    {
+      "date": "2026-03-10",
+      "entry": "Felix Kasiske submitted a project plan for the Transformation at ACCHCO engagement, which Alexandria Container & Cargo Handling Co. accepted and proposed to hold a kickoff meeting during the week of March 23rd at their Alexandria offices."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Felix Kasiske began building the simulation model for the Phase 1 diagnostics of ACCHCO's terminal operating system following the kickoff meeting in Alexandria."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Felix Kasiske is building the simulation model for ACCHCO's terminal operating system data as part of Phase 1 diagnostics."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "In early May, Felix Kasiske, Managing Director of RPX Optimization GmbH, reported that Phase 1 of the yard congestion simulation was complete, identified poor block allocation as the cause, and scheduled a two‑day operations team meeting to begin Phase 2 redesign."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "Felix Kasiske, Managing Director of RPX Optimization GmbH, announced that Phase 1 of the yard congestion simulation was complete, identified poor block allocation (not lack of space) as the cause, estimated a roughly 20% capacity recovery through re‑zoning, and requested two days with the operations team in early May to begin Phase 2 redesign."
+    },
+    {
+      "date": "2026-05-26",
+      "entry": "Dr. Felix Kasiske is the Managing Director of RPX Optimization GmbH, as indicated by his contact information in the email."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "works_at",
+      "object": "RPX Optimization",
+      "object_type": "company"
+    },
+    {
+      "predicate": "leads",
+      "object": "Phase 1 diagnostics",
+      "object_type": "project"
+    },
+    {
+      "predicate": "leads",
+      "object": "Phase 2 redesign",
+      "object_type": "project"
+    },
+    {
+      "predicate": "leads",
+      "object": "RFP",
+      "object_type": "project"
+    },
+    {
+      "predicate": "leads",
+      "object": "simulation model",
+      "object_type": "project"
+    },
+    {
+      "predicate": "leads",
+      "object": "Transformation at ACCHCO",
+      "object_type": "project"
+    }
+  ]
+}

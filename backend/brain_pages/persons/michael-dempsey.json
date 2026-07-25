@@ -1,0 +1,57 @@
+{
+  "frontmatter": {
+    "type": "person",
+    "name": "Michael Dempsey",
+    "role": "Managing Director",
+    "email": "MDempsey@RPXOptimization.com",
+    "location": "US",
+    "relationship": "client",
+    "tags": []
+  },
+  "description": "Michael Dempsey serves as Managing Director, RPX Optimization (US). His listed contact information includes the phone number +1 312‑543‑1616 and the email address MDempsey@RPXOptimization.com.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "Michael Dempsey, Managing Director of RPX Optimization (US), emailed Felix requesting he lead the modeling for a full operational transformation of Alexandria Container & Cargo Handling Co's main container terminal, proposing the engagement be called \"Transformation at ACCHCO\"."
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "Michael Dempsey, Managing Director of RPX Optimization (US), instructed Felix to lead the modeling for a proposed engagement called \"Transformation at ACCHCO\" after a first call with ACCHCO's Operations Director regarding an RFP for a full operational transformation at the Port of Alexandria."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "Michael Dempsey confirmed participation in the ACCHCO project, approving Felix Kasiske's lead on modeling and the proposed three‑phase diagnostic, redesign, and implementation plan."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "Michael Dempsey was addressed by Felix Kasiske as a participant in the ACCHCO project, confirming his involvement in the modeling effort and the three-phase plan to address the fleet and yard congestion issues."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Michael Dempsey, Managing Director of RPX Optimization (US), reported that the project's kickoff in Alexandria took place and Phase 1 diagnostics are now under way."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Michael Dempsey, Managing Director of RPX Optimization (US), reported in an email that a kickoff meeting took place in Alexandria and Phase 1 diagnostics are now underway, with full access to ACCHCO’s terminal operating system data and a yard utilization peak of 94% identified."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "Michael Dempsey was informed by Felix Kasiske that Phase 1 of the yard‑congestion simulation was complete, revealing that poor block allocation—not lack of space—caused the congestion and that re‑zoning could recover roughly 20% of effective capacity, prompting a move into Phase 2 redesign."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "Michael Dempsey was informed that Phase 1 of the yard‑congestion simulation was complete, confirming that poor block allocation—not lack of space—was the cause and that re‑zoning could recover roughly 20% of effective capacity, and that Phase 2 redesign would begin with a two‑day operations team session scheduled for early May."
+    },
+    {
+      "date": "2026-05-26",
+      "entry": "Michael Dempsey holds the position of Vice President of Business Development at RPX Optimization LLC, reachable at +1 312‑543‑1616 and MDempsey@RPXOptimization.com."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "works_at",
+      "object": "RPX Optimization",
+      "object_type": "company"
+    }
+  ]
+}

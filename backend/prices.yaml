@@ -1,0 +1,40 @@
+# ============================================================================
+#  LLM model prices  —  THIS IS THE ONLY FILE YOU EDIT TO CHANGE PRICES.
+# ============================================================================
+#
+#  Prices are US dollars per 1,000,000 tokens (the way vendor price sheets quote
+#  them). Input (prompt) and output (completion) are priced separately.
+#
+#  To change a price: edit the number, save. That's it.
+#    - The next LLM call notices the change and appends a new, dated row to the
+#      price history in the database (so you keep a full record of when each
+#      price took effect — nothing is overwritten).
+#    - Every call also stamps the exact price it paid onto its own usage row,
+#      so past costs are never altered by a later edit.
+#    - To apply an edit immediately (instead of waiting for the next call):
+#        cd backend && python -m src.billing sync
+#
+#  The model key is the LLMBase model id (the string you send as `model`).
+# ============================================================================
+
+currency: USD
+
+models:
+  deepseek/deepseek-v4-flash:                    { input: 0.200, output: 0.300 }
+  deepseek/deepseek-v4-pro:                      { input: 1.80,  output: 3.60 }
+  google/gemma-4-26b-a4b-it:                     { input: 0.130, output: 0.400 }
+  google/gemma-4-31b-it:                         { input: 0.200, output: 0.500 }
+  meta-llama/llama-4-maverick:                   { input: 0.350, output: 1.00 }
+  minimax/minimax-m2.7:                          { input: 0.400, output: 1.40 }
+  minimax/minimax-m3:                            { input: 0.400, output: 1.40 }
+  mistral/mistral-nemo:                          { input: 0.100, output: 0.150 }
+  moonshotai/kimi-k2.6:                          { input: 0.900, output: 4.00 }
+  nvidia/nemotron-3-nano-omni-30b-a3b-reasoning: { input: 0.300, output: 1.00 }
+  nvidia/nemotron-3-ultra-550b-a55b:             { input: 0.600, output: 2.90 }
+  openai/gpt-oss-120b:                           { input: 0.090, output: 0.360 }
+  openai/gpt-oss-20b:                            { input: 0.070, output: 0.200 }
+  qwen/qwen3-coder:                              { input: 0.400, output: 1.60 }
+  qwen/qwen3.5-397b-a17b:                        { input: 0.600, output: 3.60 }
+  qwen/qwen3.6-35b-a3b:                          { input: 0.250, output: 1.20 }
+  z-ai/glm-5:                                    { input: 1.00,  output: 3.20 }
+  z-ai/glm-5.1:                                  { input: 1.40,  output: 4.40 }

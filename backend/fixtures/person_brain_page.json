@@ -1,0 +1,15 @@
+{
+  "frontmatter": {
+    "type": "person",
+    "name": null,
+    "company": null,
+    "role": null,
+    "email": null,
+    "location": null,
+    "relationship": null,
+    "status": null,
+    "tags": []
+  },
+  "description": "",
+  "timeline": []
+}

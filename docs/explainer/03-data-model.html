@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3 · Data model — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html">2 · Architecture</a>
+    <a href="03-data-model.html" class="active">3 · Data model</a>
+    <a href="04-frontend-pages.html">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
+    <a href="08-transformers.html">8 · Transformers</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 3</p>
+  <h1>The data model</h1>
+  <p class="lead">A piece of email enters as raw text and leaves as a searchable, connected fact. Follow that
+  journey first — the four phases of <strong>ingestion</strong> — then explore the tables by
+  <strong>clicking them</strong> in the live diagrams. The detail opens on demand, so nothing here is a wall
+  of text.</p>
+
+  <!-- ============================ THE PROCESS ============================ -->
+  <h2>Ingestion, in four phases</h2>
+  <p>One process — <strong>ingestion</strong> — turns a new message into brain. It runs the same way for real
+  email and for the demo seeder, and it splits into four named phases. Each phase has a job and writes
+  specific tables.</p>
+
+  <div class="mermaid">
+flowchart TB
+  inbox["📨 New email / file / message<br/>(in Microsoft 365)"]
+  subgraph m1["① CAPTURE — pull it in"]
+    c1["Ask Graph 'what changed?', de-dupe,<br/>tidy to one shape, store the raw copy"]
+  end
+  subgraph m2["② TRIAGE — is it in scope?"]
+    c2["Score against the triage buckets,<br/>keep in-scope, drop the rest"]
+  end
+  subgraph m3["③ COMPREHEND — text → pages → graph"]
+    c3["AI agents read each kept item, write the<br/>brain page (source of truth), then derive<br/>its entities + relationships"]
+  end
+  subgraph m4["④ INDEX — make it findable"]
+    c4["Chop each page into passages,<br/>embed + keyword-index for search"]
+  end
+  inbox --> m1 --> m2 --> m3 --> m4
+  brain[("Brain now<br/>answers questions")]
+  m4 --> brain
+  </div>
+
+  <table>
+    <tr><th>Phase</th><th>AI?</th><th>Tables it writes</th></tr>
+    <tr><td><strong>① Capture</strong> — pull only what changed, de-dupe, store raw</td>
+      <td><span class="pill mock">no</span></td>
+      <td><code>capture_cursors</code>, <code>capture_runs</code>, <code>captured_events</code></td></tr>
+    <tr><td><strong>② Triage</strong> — keep in-scope, log drops content-free</td>
+      <td><span class="pill mock">no</span></td>
+      <td><code>capture_runs</code>, <code>triage_exclusions</code> <span class="small">(reads
+      <code>triage_buckets</code>/<code>triage_settings</code>)</span></td></tr>
+    <tr><td><strong>③ Comprehend</strong> — entities + relationships + brain pages</td>
+      <td><span class="pill live">yes</span></td>
+      <td><code>brain_pages</code>, <code>entities</code>, <code>relationships</code>,
+      <code>comprehension_log</code>, <code>comprehension_pages</code>,
+      <code>comprehension_entities</code>, <code>comprehension_relationships</code></td></tr>
+    <tr><td><strong>④ Index</strong> — chunk + embed for retrieval</td>
+      <td><span class="pill live">yes</span></td>
+      <td><code>chunks</code></td></tr>
+  </table>
+
+  <div class="callout">Phases ① + ② are the cheap, frequent front half of ingestion — <strong>capture</strong> +
+  <strong>triage</strong>, no AI, run on a timer. Phases ③ + ④ are the metered back half —
+  <strong>comprehend</strong> + <strong>index</strong> (AI, resumable: it stops cleanly if credits run out).
+  <code>captured_events</code> is the handover point between the two halves.</div>
+
+  <!-- ============================ VOCABULARY ============================ -->
+  <h2>Three words, three different things</h2>
+  <p>These get confused constantly. They measure three different units — one word each:</p>
+  <table>
+    <tr><th>Word</th><th>Exactly one…</th><th>Definition</th></tr>
+    <tr><td><code>captured_event</code></td><td>piece of <strong>raw material</strong></td>
+      <td>One communication that passed triage — a single email/file/message, stored verbatim. The input the AI
+      reads.</td></tr>
+    <tr><td><code>capture_run</code></td><td>sweep of <strong>work</strong></td>
+      <td>One pass over a mailbox: "fetched 40, kept 12, dropped 28." The operational log, not the content.</td></tr>
+    <tr><td><code>comprehension_log</code></td><td><strong>receipt</strong> for one comprehend</td>
+      <td>What phase ③ did with one captured_event — entities found, AI calls, tokens. One per processed
+      event (1:1).</td></tr>
+  </table>
+
+  <!-- ============================ BRAIN ============================ -->
+  <h2>Database 1 — the customer brain</h2>
+  <p>Applied identically to <em>every</em> customer's own database (<code>backend/migrations/tenant/*.sql</code>),
+  holding only that customer's data. All thirteen tables are below, wired by their real foreign keys. <strong>Drag
+  to pan, scroll to zoom, and click any table</strong> (in the diagram or the chips) to read what it holds.</p>
+
+  <div class="erwrap" id="brainEr">
+    <div class="ertools">
+      <button class="zout" title="Zoom out">−</button>
+      <button class="zin" title="Zoom in">+</button>
+      <button class="reset" title="Reset view">reset</button>
+    </div>
+    <div class="mermaid">
+erDiagram
+  capture_runs      ||--o{ triage_exclusions : "run_id → logged the drop"
+  triage_buckets    ||--o{ triage_exclusions : "bucket → categorised as"
+  capture_runs      ||--o{ captured_events   : "capture_run_id → first captured by"
+  captured_events   ||--o| comprehension_log : "captured_event_id → 1:1 receipt"
+  comprehension_log ||--o{ comprehension_pages         : "touched (source of truth)"
+  brain_pages       ||--o{ comprehension_pages         : "touched by"
+  comprehension_log ||--o{ comprehension_entities      : "wrote"
+  entities          ||--o{ comprehension_entities      : "touched by"
+  comprehension_log ||--o{ comprehension_relationships : "wrote"
+  relationships     ||--o{ comprehension_relationships : "touched by"
+  entities          ||--o{ relationships     : "subject → is subject of"
+  entities          ||--o{ relationships     : "object → is object of"
+  entities          ||--o{ chunks            : "entity_id → indexed as"
+  entity_types       ||--o{ entity_type_fields : "key → has fields"
+  entity_types       ||--o{ entities           : "key → typed as"
+  entity_types       ||--o{ brain_pages         : "key → typed as"
+  relationship_types ||--o{ relationships      : "key → typed as"
+  questions          ||--o{ question_entities  : "surfaced"
+  entities           ||--o{ question_entities  : "surfaced as"
+  capture_cursors { text mailbox PK  text delta_link  ts last_synced_at }
+  capture_runs { int id PK  text mailbox  int fetched  int included  int excluded  int duplicates  int removed  text error }
+  triage_exclusions { int id PK  int run_id FK  text bucket FK  text reason  bool layer2_applied }
+  triage_buckets { text bucket PK  text action  json anchors }
+  triage_settings { bool id PK  numeric margin }
+  captured_events { int id PK  text source  text external_id  text sender  text subject  text body_text  json raw  int capture_run_id FK  ts processed_at }
+  comprehension_log { int id PK  int captured_event_id FK  int entities_found  int entities_created  int entities_updated  int llm_calls  int input_tokens  int output_tokens }
+  comprehension_pages { int comprehension_id FK  text page_path FK  text action }
+  comprehension_entities { int comprehension_id FK  int entity_id FK  text action }
+  comprehension_relationships { int comprehension_id FK  int relationship_id FK }
+  entities { int id PK  text type  text name  text page_path }
+  relationships { int id PK  int subject FK  text predicate  int object FK }
+  chunks { int id PK  int entity_id FK  text section  text text  vector embedding  tsvector keywords }
+  questions { int id PK  text question  text answer  json sources }
+  brain_pages { text page_path PK  text entity_type FK  jsonb data  ts updated_at }
+  entity_types { text key PK  text label  text description  text page_folder }
+  entity_type_fields { int id PK  text entity_type FK  text field_key  text description  bool is_list }
+  relationship_types { text key PK  text label  text description  text subject_type FK  text object_type FK }
+  question_entities { int question_id FK  int entity_id FK  text method  int rank }
+    </div>
+  </div>
+  <p class="erhint">drag to pan · scroll to zoom · click a table for detail</p>
+  <div class="er-chips" id="brainChips"></div>
+  <div class="erpanel empty" id="brainPanel">Click a table above to see its columns and job.</div>
+
+  <div class="callout">Full provenance, both directions. Every <code>captured_event</code> now records the
+  <code>capture_run_id</code> that <em>first</em> pulled it in (a later sweep that re-sees it counts it as a
+  duplicate and never touches the row, so the id always points at the original sweep). And
+  <code>comprehension_log</code> no longer stops at <em>counts</em>. The primary link is
+  <code>comprehension_pages</code>: the exact brain <strong>pages</strong> (the source of truth) each comprehend
+  created or updated — recorded the moment the page is written, so it holds even if the graph sync is off. The
+  derived graph-side view follows in two more junction tables: <code>comprehension_entities</code> (with a
+  <code>created</code>/<code>updated</code> action per entity) and <code>comprehension_relationships</code>.
+  "Show every page, entity, and relationship this email touched" is now a plain join.
+  The same trick runs on the read side: <code>question_entities</code> records which entities the brain
+  <em>surfaced</em> for each question and how (a direct <code>vector</code> hit or a 1-hop <code>graph_neighbor</code>),
+  so "what does the brain resurface?" is also a join. <code>capture_cursors</code> still stands alone by design —
+  a cursor is keyed by mailbox.
+
+  <br><br>And the vocabulary itself is now <strong>customer-defined</strong>. <code>entity_types</code> +
+  <code>entity_type_fields</code> + <code>relationship_types</code> hold the kinds of thing this tenant tracks, the
+  attributes each carries, and the predicates that connect them — each with a one-line description the agents read to
+  drive detection. What used to be hardcoded ("person | company | project" in the agent prompt,
+  "works_at | leads | …" in a frozenset) is now config seeded at onboarding, and <code>entities.type</code> /
+  <code>relationships.predicate</code> are foreign-keyed onto it.</div>
+
+  <!-- ============================ CONTROL ============================ -->
+  <h2>Database 2 — the control plane <span class="small">(shared)</span></h2>
+  <p>The shared directory and billing system (<code>backend/src/db/control_schema.sql</code>). It holds <em>no</em>
+  brain content — only enough to route each request to the right tenant database, decide who's allowed in, and
+  track every dollar. Same controls: <strong>pan, zoom, click</strong>.</p>
+
+  <div class="erwrap" id="ctrlEr">
+    <div class="ertools">
+      <button class="zout" title="Zoom out">−</button>
+      <button class="zin" title="Zoom in">+</button>
+      <button class="reset" title="Reset view">reset</button>
+    </div>
+    <div class="mermaid">
+erDiagram
+  organizations ||--o{ tenant_databases : "owns"
+  organizations ||--o{ memberships      : "has"
+  users         ||--o{ memberships      : "in"
+  organizations ||--o| sso_connections  : "logs in via"
+  organizations ||--o{ credit_entries   : "funded by"
+  organizations ||--o{ llm_usage_events : "spends in"
+  llm_model_prices ||--o{ llm_usage_events : "priced by"
+  organizations { int id PK  text slug  text name  text status  numeric credit_limit }
+  tenant_databases { int id PK  int org_id FK  text db_name  text schema_version }
+  users { int id PK  text email  text entra_oid }
+  memberships { int id PK  int org_id FK  int user_id FK  text role }
+  sso_connections { int id PK  int org_id FK  text tenant_id  text client_id  text client_secret }
+  llm_model_prices { int id PK  text model  numeric input_price  numeric output_price  ts effective_from }
+  llm_usage_events { int id PK  int org_id FK  int price_id FK  text request_kind  int prompt_tokens  int completion_tokens  numeric total_cost }
+  credit_entries { int id PK  int org_id FK  text kind  numeric amount }
+  audit_log { int id PK  text actor  text action  json detail }
+    </div>
+  </div>
+  <p class="erhint">drag to pan · scroll to zoom · click a table for detail</p>
+  <div class="er-chips" id="ctrlChips"></div>
+  <div class="erpanel empty" id="ctrlPanel">Click a table above to see its columns and job.</div>
+
+  <div class="callout analogy">The <strong>price book</strong> (<code>llm_model_prices</code>) + <strong>ledger</strong>
+  (<code>llm_usage_events</code>) design is how a bank statement works: each line records the price <em>that
+  applied that day</em>. Re-pricing tomorrow never rewrites yesterday's statement. Live balance is the
+  <code>org_credit_balance</code> view — granted minus spent, computed on demand.</div>
+
+  <h2>Native sign-in tables <span class="small">(password + authenticator — control plane)</span></h2>
+  <p>Customers with no Microsoft sign in <strong>natively</strong> (<a href="05-flows.html">Chapter 5</a>):
+  email + password + an authenticator app. Four control-plane tables back it, and none keeps a usable secret
+  in the clear — passwords and backup codes are hashed (argon2id), the authenticator (TOTP) seed is encrypted
+  at rest, and invite / reset links are stored only as a hash. Which method an org uses is the
+  <code>organizations.auth_method</code> column (<code>'entra'</code> vs <code>'native'</code>); SSO customers
+  use none of these because Microsoft holds their credentials.</p>
+  <div class="mermaid">
+erDiagram
+  users ||--o| local_credentials : "password"
+  users ||--o| totp_secrets : "authenticator seed"
+  users ||--o{ totp_backup_codes : "recovery codes"
+  users ||--o{ auth_tokens : "invite / reset links"
+  local_credentials { int user_id PK  text password_hash  int failed_attempts  timestamptz locked_until }
+  totp_secrets { int user_id PK  text secret_encrypted  timestamptz confirmed_at }
+  totp_backup_codes { int id PK  int user_id FK  text code_hash  timestamptz used_at }
+  auth_tokens { int id PK  int user_id FK  text purpose  text token_hash  timestamptz expires_at }
+  </div>
+
+  <h2>Connector tables <span class="small">(MCP &amp; OAuth — control plane)</span></h2>
+  <p>Four more control-plane tables back the MCP doorway (<a href="07-mcp.html">Chapter 7</a>). They hold only
+  bookkeeping — never brain data — and never a usable secret: client secrets are encrypted at rest, and every
+  authorization code or token is stored only as its SHA-256 hash.</p>
+  <div class="mermaid">
+erDiagram
+  organizations ||--o{ mcp_tokens : "issued for"
+  users ||--o{ mcp_tokens : "acts as"
+  organizations ||--o{ oauth_tokens : "scoped to"
+  oauth_clients ||--o{ oauth_tokens : "issued to"
+  oauth_clients ||--o{ oauth_auth_codes : "requested by"
+  mcp_tokens { int id PK  text token_hash  int org_id FK  int user_id FK  text scopes }
+  oauth_clients { text client_id PK  text client_secret_enc  text redirect_uris  text client_name }
+  oauth_auth_codes { text code PK  int user_id FK  int org_id FK  text code_challenge  timestamptz expires_at }
+  oauth_tokens { int id PK  text token_hash  text kind  text grant_id  int user_id FK  int org_id FK }
+  </div>
+  <ul>
+    <li><code>mcp_tokens</code> — Phase 1 personal access tokens. One row per minted bearer, bound to
+    (member, workspace) with scopes; only the hash is stored, never the raw token.</li>
+    <li><code>oauth_clients</code> — every Claude / ChatGPT that registered itself (Dynamic Client
+    Registration). Any client secret is encrypted at rest (secret_box).</li>
+    <li><code>oauth_auth_codes</code> — the one-time, short-lived codes from the consent step, carrying the
+    PKCE challenge and the member + workspace that was approved.</li>
+    <li><code>oauth_tokens</code> — issued access + refresh tokens (hashed). An access token and its refresh
+    share a <code>grant_id</code>, so revoking either kills the pair.</li>
+  </ul>
+
+  <h2>How the schema stays honest — migrations</h2>
+  <p>Structure changes are numbered SQL files (<code>0001_…</code>, <code>0002_…</code>), applied in order and
+  recorded once in <code>schema_migrations</code> so they never run twice. <code>backend/src/db/migrate.py</code>
+  brings any database up to the latest version. The rule: never edit an applied file, always add a new numbered
+  one — that's what guarantees every customer's brain has the exact same structure. The table names above are the
+  ones <code>0006_ingestion_vocabulary.sql</code> settled on: <code>source_events → captured_events</code>,
+  <code>nodes/edges → entities/relationships</code>, and so on.</p>
+
+  <div class="pager">
+    <a href="02-architecture.html">← Architecture</a>
+    <a class="next" href="04-frontend-pages.html">Next: The pages →</a>
+  </div>
+</main>
+
+<script src="mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'loose',
+  themeVariables: { primaryColor:'#ffffff', primaryTextColor:'#0f0f0f', primaryBorderColor:'#3812f3',
+    lineColor:'#7159f6', secondaryColor:'#ece9ff', tertiaryColor:'#f0f0ec',
+    fontFamily:'Albert Sans, ui-sans-serif, system-ui, sans-serif', fontSize:'13px' }});
+
+// ---- per-table detail (opens on click; keeps the page short) ----
+const BRAIN = {
+  captured_events: { filled:"written by ① Capture", summary:"One raw, in-scope communication — a single email, file, or message — normalised to one shape and stored verbatim. This is the unit the AI reads in phase ③, and the handover point between the cheap front half of ingestion and the metered back half.", cols:[
+    ["id","surrogate primary key Postgres fills in."],
+    ["source","where it came from: 'email' | 'slack' | 'file'."],
+    ["external_id","the id in the origin system; one half of the UNIQUE (source, external_id) key, so re-ingesting the same message is a no-op."],
+    ["thread_id","groups a conversation or file set so a reply chain stays together."],
+    ["occurred_at","when the event actually happened at the source (sent / uploaded), not when we pulled it."],
+    ["sender","author, from-address, or uploader."],
+    ["participants","JSON — recipients, cc, or channel members."],
+    ["subject","email subject, file name, or channel name."],
+    ["body_text","the cleaned plain-text content — this is what the agents read."],
+    ["attachments","JSON metadata ([{name, mime, …}]) — not the file bytes."],
+    ["raw","the original payload kept verbatim, so comprehend can re-run without re-pulling from Microsoft."],
+    ["capture_run_id","→ capture_runs — the sweep that FIRST captured this event. A later sweep that re-sees it counts a duplicate and never touches the row, so this always points at the original sweep. ON DELETE SET NULL: pruning a run log never deletes content."],
+    ["ingested_at","when capture wrote this row."],
+    ["processed_at","null until phase ③ comprehends it; set once done so the runner only picks up new events (and can resume after a credit stop)."]]},
+  capture_runs: { filled:"written by ① + ②", summary:"One mailbox sweep — the operational log the Admin Center's Mail-sync panel reads. It records the tally for a single pull, not the content.", cols:[
+    ["id","surrogate primary key for this sweep."],
+    ["source","which connector ran — 'email' today (Slack / SharePoint later)."],
+    ["mailbox","the mailbox swept, e.g. team@acme.com."],
+    ["started_at","wall-clock start of the sweep."],
+    ["finished_at","wall-clock end; stays null until the sweep completes or errors."],
+    ["fetched","how many changed messages Graph returned this sweep."],
+    ["included","how many passed triage and became captured_events rows."],
+    ["excluded","how many triage dropped (logged content-free in triage_exclusions)."],
+    ["duplicates","how many already existed (matched an existing source + external_id) — counted, not re-stored."],
+    ["removed","delta tombstones applied — messages deleted at source, so the matching captured_events row was dropped."],
+    ["error","null on success; the exception text if the sweep failed (surfaced in the Mail-sync panel)."]]},
+  triage_exclusions: { filled:"written by ② Triage", summary:"A content-free record of every dropped message — only the reason and category, never the subject, body, or sender (GDPR data minimisation by construction). Points back to the capture_run that dropped it and the bucket it scored into.", cols:[
+    ["id","surrogate primary key."],
+    ["run_id","→ capture_runs — which sweep dropped this message."],
+    ["source","the connector it came from ('email')."],
+    ["external_id","the opaque origin id — enough to point back at the message without storing any of its content."],
+    ["bucket","→ triage_buckets — the category it scored into: redzone | spam | out_of_scope."],
+    ["reason","human-readable explanation of the drop (e.g. which bucket was nearest)."],
+    ["scores","JSON — the per-bucket cosine similarities behind the decision, kept for tuning."],
+    ["occurred_at","when the dropped message happened at source."],
+    ["excluded_at","when triage made the drop decision."],
+    ["layer2_applied","true when the security runoff (Layer 2) kept an otherwise in-scope email out because redzone was within the caution margin."]]},
+  capture_cursors: { filled:"written by ① Capture", summary:"One row per mailbox holding the Microsoft Graph delta cursor, so the next sweep only pulls what changed. Standalone — keyed by mailbox, no foreign key.", cols:[
+    ["mailbox","primary key — the Microsoft 365 mailbox this cursor belongs to."],
+    ["delta_link","the opaque Graph delta token; the next sweep sends it back to get only what changed since last time."],
+    ["last_synced_at","timestamp of the most recent successful sweep — what the Admin Center shows as 'last synced'."]]},
+  comprehension_log: { filled:"written by ③ Comprehend", summary:"The comprehend receipt for one captured_event (1:1): what phase ③ did with it and what it cost. The counts here (entities_found / created / updated) are the headline; the exact brain pages behind them live in comprehension_pages (the source-of-truth link), and the derived entities and relationships in comprehension_entities / comprehension_relationships.", cols:[
+    ["id","surrogate primary key."],
+    ["captured_event_id","UNIQUE → captured_events — the one event this receipt is for; re-processing updates rather than duplicates."],
+    ["source","copied from the event ('email' | 'file')."],
+    ["body_chars","character length of the item text — a tokenizer-free size proxy; no content is stored."],
+    ["entities_found","how many entities the agents extracted (post-dedup)."],
+    ["entities_created","of those, how many created a brand-new brain page."],
+    ["entities_updated","how many updated an existing page."],
+    ["llm_calls","actual number of AI calls this item fanned out into."],
+    ["input_tokens","actual prompt tokens — ground truth used to harden the budget estimate."],
+    ["output_tokens","actual completion tokens for this item."],
+    ["model","the LLM the agents ran on (LLM_BASE_MODEL)."],
+    ["processed_at","when comprehend finished this item."]]},
+  comprehension_pages: { filled:"written by ③ Comprehend", summary:"The source-of-truth provenance link: one row per brain PAGE a given comprehend created or updated. The page is what the comprehend actually writes first — the entities/relationships are derived from it afterward — so this is the primary 'which email touched which page?' answer. It's recorded the moment the page is saved, so it holds even if the graph sync is disabled or fails (the case comprehension_entities silently misses). Composite PK (comprehension_id, page_path); a re-processed event replaces its links cleanly.", cols:[
+    ["comprehension_id","→ comprehension_log — the comprehend run that wrote this page (CASCADE: re-processing replaces these rows)."],
+    ["page_path","→ brain_pages — the specific page touched (CASCADE on delete, follows a re-key on update)."],
+    ["action","'created' when this comprehend produced a brand-new page, 'updated' when it revised an existing one."]]},
+  comprehension_entities: { filled:"derived view, written by ③ Comprehend", summary:"The entity half of the DERIVED provenance: one row per entity a given comprehend created or updated. The page-level truth lives in comprehension_pages; this mirrors it onto the graph so 'which entities did this email touch?' is a join. Only written when graph sync succeeded. Composite PK (comprehension_id, entity_id), so a re-processed event replaces its links cleanly.", cols:[
+    ["comprehension_id","→ comprehension_log — the comprehend run that wrote this entity (CASCADE: re-processing replaces these rows)."],
+    ["entity_id","→ entities — the specific entity touched (CASCADE: entities aren't deleted in normal operation, so this link is stable)."],
+    ["action","'created' when this comprehend produced a brand-new brain page for the entity, 'updated' when it revised an existing one — mirrors comprehension_log.entities_created / entities_updated."]]},
+  comprehension_relationships: { filled:"written by ③ Comprehend", summary:"The relationship half of the provenance link: one row per relationship a given comprehend wrote. Relationships are additive and idempotent on the triple — re-syncing a page asserts (subject, predicate, object) again and the existing row's id is reused rather than recreated, so a relationship is attributed to the comprehend that FIRST wrote it. ON DELETE CASCADE keeps these links tidy if a relationship is ever removed. The link means 'the relationships this comprehend asserted'.", cols:[
+    ["comprehension_id","→ comprehension_log — the comprehend run that wrote this relationship (CASCADE)."],
+    ["relationship_id","→ relationships — the specific relationship asserted (CASCADE)."]]},
+  brain_pages: { filled:"written by ③ Comprehend", summary:"The brain page itself — the SOURCE OF TRUTH. Everything else in this database (entities, relationships, chunks) is a derived index rebuilt from these rows. A page is the {frontmatter, description, timeline, relationships} JSON document for one entity. It used to be a file on disk, but on a containerised deploy that's ephemeral (wiped on redeploy) and unshared (the api and sync services have separate filesystems), so it now lives in a durable row, keyed by the same page_path the entities/chunks tables reference.", cols:[
+    ["page_path","primary key — the relative path string, e.g. 'persons/felix-kasiske.json'. The same key entities.page_path and chunks.page_path point at, so the derived index joins straight back to its source page."],
+    ["entity_type","→ entity_types(key) — the page's type (RESTRICT/CASCADE, like entities.type)."],
+    ["data","JSONB — the full page document: frontmatter (structured attributes), description, timeline, and the subject's outgoing relationships."],
+    ["updated_at","when this page was last written by a comprehend."]]},
+  entities: { filled:"derived index, written by ③ Comprehend", summary:"One entity — a person, company, project, or whatever types this tenant defined. The dots of the knowledge graph; relationships connect them and chunks describe them. Derived from brain_pages — rebuildable by re-syncing the pages.", cols:[
+    ["id","surrogate id; relationships and chunks reference it."],
+    ["type","→ entity_types(key) — the customer-defined kind of thing (person | company | project by default). FK ON DELETE RESTRICT, so a type can't be removed while entities still use it."],
+    ["name","the entity's display name."],
+    ["page_path","path to its brain page JSON (e.g. persons/felix.json); may be empty until a page is written."]]},
+  relationships: { filled:"written by ③ Comprehend", summary:"One relationship between two entities — the lines of the graph, stored as an RDF triple (subject–predicate–object). The RelationshipAgent extracts it from the email and it is stored on the brain page first, then synced here and validated against the ontology. Both ends point back to entities.", cols:[
+    ["id","surrogate primary key."],
+    ["subject","→ entities — the id at the head of the triple (must be a real entity)."],
+    ["predicate","→ relationship_types(key) — the customer-defined predicate the agent picked from the tenant's closed list (it never invents one). Its subject_type/object_type guardrail is enforced before the triple is written."],
+    ["object","→ entities — the id at the tail of the triple."],
+    ["source_page","which brain page this relationship was asserted on."]]},
+  entity_types: { filled:"customer onboarding config (read by ③)", summary:"The kinds of thing this tenant tracks — person, company, project by default, but fully customer-defined at onboarding. The IdentifierAgent reads each row's one-line description to decide what to extract, and entities.type is foreign-keyed onto this table. Replaces the hardcoded type list that used to live in the agent prompt.", cols:[
+    ["key","primary key — the type key, e.g. 'person'; also the label the IdentifierAgent uses."],
+    ["label","display name for the admin UI."],
+    ["description","one line guiding detection — what counts as this type. The IdentifierAgent reads it."],
+    ["page_folder","the path prefix for this type's brain pages — e.g. 'persons' yields page_path 'persons/felix-kasiske.json' (a key into brain_pages, not a disk folder)."],
+    ["position","ordering in the admin UI."],
+    ["updated_at / updated_by","when and by whom this type was last edited."]]},
+  entity_type_fields: { filled:"customer onboarding config (read by ③)", summary:"The structured attributes each entity type carries — the spec the generic AttributeAgent extracts, guided by each field's description. The values still live in the page JSON (the page is source of truth); this table is the schema, not the data. Replaces the per-type frontmatter agents (person/company/project) with one generic agent driven by config.", cols:[
+    ["id","surrogate primary key."],
+    ["entity_type","→ entity_types(key) — which type this field belongs to (CASCADE: dropping a type drops its fields)."],
+    ["field_key","the attribute key; becomes a frontmatter key on the page (e.g. 'role')."],
+    ["label","display name for the admin UI."],
+    ["description","guides the AttributeAgent — e.g. 'the person's job title, if stated'."],
+    ["is_list","true = extract a list of values rather than a single one."],
+    ["position","ordering within the type."]]},
+  relationship_types: { filled:"customer onboarding config (read by ③)", summary:"The predicates this tenant allows — works_at | key_contact_at | leads | has_client by default, customer-defined at onboarding. The RelationshipAgent picks from these by description (a closed set — it never invents one, and may return none); relationships.predicate is foreign-keyed onto this table. Replaces the predicate frozenset that used to live in graph_sync.py.", cols:[
+    ["key","primary key — the predicate key, e.g. 'works_at'."],
+    ["label","display name for the admin UI."],
+    ["description","what this predicate means — the RelationshipAgent picks from these."],
+    ["subject_type","→ entity_types(key) — domain guardrail: the allowed type at the head of the triple. NULL = any. A triple whose subject doesn't match is rejected before it's written."],
+    ["object_type","→ entity_types(key) — range guardrail: the allowed type at the tail. NULL = any."],
+    ["position","ordering in the admin UI."],
+    ["updated_at / updated_by","when and by whom this predicate was last edited."]]},
+  question_entities: { filled:"written at ask-time", summary:"Read-side provenance — the mirror image of comprehension_entities. One row per entity the brain surfaced answering a question, recording HOW it surfaced (a direct vector/keyword hit, or pulled in as a 1-hop graph neighbour) and its rank in the merged source list. Makes 'what does the brain resurface, and how?' a plain query.", cols:[
+    ["question_id","→ questions — the question this entity was surfaced for (CASCADE)."],
+    ["entity_id","→ entities — the entity surfaced (CASCADE)."],
+    ["method","'vector' (a direct semantic/keyword hit) or 'graph_neighbor' (pulled in by walking a relationship one hop)."],
+    ["rank","its position in the merged source list shown to the user (1 = top). An entity keeps its best/earliest rank."]]},
+  chunks: { filled:"written by ④ Index", summary:"A brain page chopped into a searchable passage, carrying a meaning-vector and a keyword index. Hybrid search ranks on both at once.", cols:[
+    ["id","surrogate primary key."],
+    ["page_path","which brain page this passage came from (e.g. persons/felix.json)."],
+    ["entity_id","→ entities — the entity this passage is about (CASCADE: deleting the entity drops its chunks)."],
+    ["section","which part of the page — 'description' | 'timeline'."],
+    ["date","YYYY-MM-DD for a timeline entry; null for a description chunk."],
+    ["text","the actual passage that was embedded."],
+    ["embedding","VECTOR(1024) from jina-embeddings-v3 (multilingual) — the meaning vector for semantic search."],
+    ["keywords","tsvector (to_tsvector('english', text)) — for keyword search."],
+    ["created_at","when this chunk was indexed."]]},
+  questions: { filled:"written at ask-time", summary:"History of every Ask-box question with the answer and citations frozen in, so a past question can be replayed without re-paying the AI. Its own ledger — no foreign keys.", cols:[
+    ["id","surrogate primary key."],
+    ["question","the user's Ask-box question, verbatim."],
+    ["answer","the cited answer the AI returned."],
+    ["sources","JSON — the merged citation list, frozen at answer time."],
+    ["created_at","when it was asked (the sidebar lists newest first)."]]},
+  triage_buckets: { filled:"admin config (read by ②)", summary:"Admin-editable definition of one scope category and whether it's included. The four buckets and the policy (only in_scope is ever ingested) are fixed in code — an admin can never make redzone include.", cols:[
+    ["bucket","primary key — the category: in_scope | redzone | spam | out_of_scope."],
+    ["action","include | exclude — fixed per bucket, not admin-editable."],
+    ["description","the admin-editable natural-language definition of what belongs here."],
+    ["anchors","JSON — short example phrases the admin edits; these are embedded and used to score each email."],
+    ["updated_at","when this bucket was last edited."],
+    ["updated_by","who last edited it in the Admin Center."]]},
+  triage_settings: { filled:"admin config (read by ②)", summary:"A single row holding the Layer-2 security margin for the triage gate.", cols:[
+    ["id","always TRUE — a CHECK constraint forces a single row (singleton)."],
+    ["margin","the security caution band (default 0.0300): how close redzone must be to in-scope to trigger the Layer-2 runoff drop."],
+    ["updated_at","when the margin was last changed."],
+    ["updated_by","who changed it."]]},
+};
+const CTRL = {
+  organizations: { filled:"the customer directory", summary:"One row per customer (tenant). The hub the rest of the control plane hangs off — tenant databases, memberships, SSO, credits, and usage all point back here.", cols:[
+    ["id","surrogate primary key; every other control table references it."],
+    ["slug","url-safe key (e.g. acme); UNIQUE, and it also drives the brain db name iota_tenant_acme."],
+    ["name","the customer's display name."],
+    ["status","provisioning | active | suspended."],
+    ["data_region","where this org's data is hosted (default EU)."],
+    ["settings","JSON bag for per-org configuration."],
+    ["created_at","when the org was created."],
+    ["credit_limit","hard spend ceiling; NULL = uncapped. Metering blocks any call that would push spend to or over this before it fires."]]},
+  tenant_databases: { filled:"the registry", summary:"Maps each org to its own brain database — how the backend knows which database to open for you (database-per-tenant isolation).", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations — the customer this brain belongs to."],
+    ["db_name","the brain database name, e.g. iota_tenant_acme. UNIQUE."],
+    ["dsn","null = derive the URL from the control server; set it to pin a tenant to its own DB server later, no code change."],
+    ["schema_version","the head migration currently applied to that brain."],
+    ["status","active | suspended | deleting."],
+    ["provisioned_at","when the brain database was created."]]},
+  users: { filled:"global identities", summary:"One person = one row, even across several customers. Filled in from Microsoft (Entra) at first SSO login.", cols:[
+    ["id","surrogate primary key."],
+    ["email","the person's email — UNIQUE; the stable handle across all orgs."],
+    ["display_name","their name, from Microsoft."],
+    ["entra_oid","the Microsoft object id (UNIQUE) — the identity matched at SSO."],
+    ["entra_tenant_id","their Entra directory (tenant) id."],
+    ["created_at","when the user first appeared."]]},
+  memberships: { filled:"who can do what", summary:"Which user has which role in which org. The join table between users and organizations; the role decides what you can see and do.", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations."],
+    ["user_id","→ users. UNIQUE (org_id, user_id) — one membership per person per org."],
+    ["role","admin | consultant | viewer — decides which Admin Center panels and actions they get."],
+    ["created_at","when the membership was granted."]]},
+  sso_connections: { filled:"per-org Microsoft login", summary:"Per-org Entra (OIDC) sign-in configuration — one row per org. Rides the same Entra app registration as the Graph connector, but uses the delegated code flow (users sign in).", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations — one SSO config per org (UNIQUE)."],
+    ["provider","'entra' (the only provider today)."],
+    ["tenant_id","the customer's Entra directory (tenant) id."],
+    ["client_id","the app registration's application (client) id."],
+    ["client_secret","confidential-client secret — plaintext for the pilot, flagged to move to a secrets manager or cert before customer #2."],
+    ["redirect_uri","must match the app registration exactly."],
+    ["enabled","whether SSO is live for this org."],
+    ["created_at","when the connection was added."],
+    ["updated_at","when it was last changed."]]},
+  llm_model_prices: { filled:"the price book", summary:"Effective-dated price list: what each AI model costs per million tokens, with a start date. Lets historical costs stay correct when prices change — the price in force at time T is the latest row with effective_from ≤ T.", cols:[
+    ["id","surrogate primary key; usage events reference it."],
+    ["model","the model these prices apply to, e.g. openai/gpt-oss-120b."],
+    ["currency","price currency (USD)."],
+    ["input_price_per_mtok","price per 1,000,000 input (prompt) tokens."],
+    ["output_price_per_mtok","price per 1,000,000 output (completion) tokens — separate because providers charge them differently."],
+    ["effective_from","when this price took effect. UNIQUE (model, effective_from)."],
+    ["note","free-text note about the price."],
+    ["created_at","when the price row was added."]]},
+  llm_usage_events: { filled:"the ledger", summary:"One append-only row per AI call, with the price snapshotted in at the moment it happened. The single source of truth for spend — total_cost can never be rewritten by a later price change.", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations — who spent."],
+    ["occurred_at","when the call happened."],
+    ["model","the model actually used for this call."],
+    ["request_kind","what the call was for — comprehension | qa | page_update | …"],
+    ["prompt_tokens","input tokens for the call."],
+    ["completion_tokens","output tokens for the call."],
+    ["total_tokens","prompt + completion."],
+    ["price_id","→ llm_model_prices — the price-book row applied (NULL = recorded before a matching price existed; recost backfills it)."],
+    ["input_price_per_mtok","input price snapshotted at write time."],
+    ["output_price_per_mtok","output price snapshotted at write time."],
+    ["input_cost","computed input cost, frozen in."],
+    ["output_cost","computed output cost, frozen in."],
+    ["total_cost","input + output cost — the value spend is summed from."],
+    ["meta","JSON — response model, request id, raw usage, flags."],
+    ["created_at","row write time."]]},
+  credit_entries: { filled:"top-ups", summary:"Grants, setup fees, and manual adjustments. Consumption is NOT duplicated here — it is summed from llm_usage_events, so balance = sum(amount) − sum(usage cost).", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations."],
+    ["occurred_at","when the entry was made."],
+    ["kind","grant | setup | adjustment."],
+    ["amount","positive adds credit; negative claws it back."],
+    ["currency","USD."],
+    ["actor","who made the entry."],
+    ["note","free-text reason."],
+    ["created_at","row write time."]]},
+  audit_log: { filled:"accountability", summary:"Who did what, when — provisioning and admin actions, for accountability.", cols:[
+    ["id","surrogate primary key."],
+    ["org_id","→ organizations (nullable) — which customer the action touched."],
+    ["actor","who or what performed the action."],
+    ["action","the action name."],
+    ["detail","JSON payload with the specifics."],
+    ["created_at","when it happened."]]},
+};
+
+function makeErInteractive(wrapId, panelId, chipsId, details){
+  const wrap = document.getElementById(wrapId);
+  const md = wrap.querySelector('.mermaid');
+  const svg = wrap.querySelector('svg');
+  const panel = document.getElementById(panelId);
+  const chips = document.getElementById(chipsId);
+  if(!svg) return;
+
+  let vb = (svg.getAttribute('viewBox')||'0 0 1000 500').split(/\s+/).map(Number);
+  const home = [...vb];
+  const apply = () => svg.setAttribute('viewBox', vb.join(' '));
+  function zoomAt(factor, cx, cy){
+    const r = svg.getBoundingClientRect();
+    const px = (cx - r.left)/r.width, py = (cy - r.top)/r.height;
+    const nw = vb[2]*factor, nh = vb[3]*factor;
+    vb[0] += (vb[2]-nw)*px; vb[1] += (vb[3]-nh)*py; vb[2]=nw; vb[3]=nh; apply();
+  }
+  md.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.deltaY>0?1.12:0.89, e.clientX, e.clientY); }, {passive:false});
+  let drag=false, moved=false, lx=0, ly=0;
+  md.addEventListener('pointerdown', e => { drag=true; moved=false; lx=e.clientX; ly=e.clientY; md.setPointerCapture(e.pointerId); });
+  md.addEventListener('pointermove', e => { if(!drag) return; moved=true; const r=svg.getBoundingClientRect();
+    vb[0] -= (e.clientX-lx)*vb[2]/r.width; vb[1] -= (e.clientY-ly)*vb[3]/r.height; lx=e.clientX; ly=e.clientY; apply(); });
+  const stop=()=>{ drag=false; };
+  md.addEventListener('pointerup', stop); md.addEventListener('pointercancel', stop);
+  const ctr = () => { const r=svg.getBoundingClientRect(); return [r.left+r.width/2, r.top+r.height/2]; };
+  wrap.querySelector('.zin').onclick  = () => zoomAt(0.83, ...ctr());
+  wrap.querySelector('.zout').onclick = () => zoomAt(1.20, ...ctr());
+  wrap.querySelector('.reset').onclick = () => { vb=[...home]; apply(); };
+
+  // Robust entity lookup: match each table name to the <text> that renders it,
+  // then climb to its enclosing <g>. (The old g[id^="entity-"] selector matched
+  // nothing in this mermaid build, which is why diagram clicks were dead.)
+  const names = Object.keys(details);
+  const groups = {};   // name -> the entity's <g>
+  svg.querySelectorAll('text').forEach(t => {
+    const name = (t.textContent || '').trim();
+    if(!names.includes(name) || groups[name]) return;
+    const g = t.closest('g');
+    if(!g) return;
+    groups[name] = g;
+    g.classList.add('er-entity');
+    g.addEventListener('click', () => { if(!moved) select(name); });
+  });
+
+  function select(name){
+    Object.entries(groups).forEach(([n,g]) => {
+      const sel = n === name;
+      g.querySelectorAll('rect,path,polygon').forEach(r => {
+        r.style.stroke = sel ? '#3812f3' : ''; r.style.strokeWidth = sel ? '2px' : ''; });
+    });
+    [...chips.children].forEach(c => c.classList.toggle('active', c.dataset.t === name));
+    const d = details[name];
+    if(!d){ panel.className='erpanel empty'; panel.textContent='No detail for '+name+'.'; return; }
+    panel.className = 'erpanel';
+    panel.innerHTML = '<div class="filled">'+d.filled+'</div><div class="tname">'+name+'</div>'
+      + '<p class="summary">'+d.summary+'</p>'
+      + '<p class="colslabel">columns ('+d.cols.length+')</p><ul class="cols">'
+      + d.cols.map(c => '<li><code>'+c[0]+'</code>'+(c[1]?' <span class="cdesc">— '+c[1]+'</span>':'')+'</li>').join('') + '</ul>';
+  }
+  Object.keys(details).forEach(name => {
+    const b=document.createElement('button'); b.className='er-chip'; b.textContent=name; b.dataset.t=name;
+    b.onclick=()=>select(name); chips.appendChild(b);
+  });
+}
+
+mermaid.run().then(() => {
+  makeErInteractive('brainEr','brainPanel','brainChips', BRAIN);
+  makeErInteractive('ctrlEr','ctrlPanel','ctrlChips', CTRL);
+});
+</script>
+</body>
+</html>

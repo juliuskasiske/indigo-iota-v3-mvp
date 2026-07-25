@@ -1,0 +1,34 @@
+{
+  "frontmatter": {
+    "type": "project",
+    "name": "Phase 1 diagnostics",
+    "status": "completed",
+    "tags": []
+  },
+  "description": "Phase 1 diagnostics are now complete. Yusuf provided full access to ACCHCO’s terminal operating system data, revealing a yard utilization peak of 94%. Felix’s simulation confirmed the congestion is driven by poor block allocation rather than lack of space, and re‑zoning could recover roughly 20% of effective capacity. The team is moving into Phase 2 redesign, with a request for two days of operations‑team support in early May.",
+  "timeline": [
+    {
+      "date": "2026-03-24",
+      "entry": "Phase 1 diagnostics started, with full access to ACCHCO's terminal operating system data revealing an initial yard utilization peak of 94% (well above the 75% best‑practice threshold) and Felix beginning to build the simulation model."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Today the kickoff in Alexandria initiated Phase 1 diagnostics, and with full access to ACCHCO’s terminal operating system data a key finding of 94% peak yard utilization was identified, leading Felix to begin building the simulation model."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "Phase 1 diagnostics were completed, revealing that yard congestion is caused by poor block allocation rather than insufficient space and that re‑zoning could recover roughly 20% of effective capacity."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "Phase 1 diagnostics were completed, confirming that yard congestion is caused by poor block allocation rather than lack of space and that approximately 20% of effective capacity can be recovered through re-zoning."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "has_client",
+      "object": "ACCHCO",
+      "object_type": "company"
+    }
+  ]
+}

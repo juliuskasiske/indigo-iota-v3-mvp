@@ -1,0 +1,88 @@
+# ============================================================================
+#  EMAIL SCOPE CLASSIFICATION  —  THIS IS THE ONLY FILE YOU EDIT TO DEFINE
+#  WHAT THE BRAIN IS ALLOWED TO INGEST.
+# ============================================================================
+#
+#  Every incoming email is sorted into exactly ONE of four buckets by comparing
+#  it (locally, no LLM, no data leaves the box) against the natural-language
+#  descriptions below:
+#
+#    in_scope      -> INCLUDE.  The work this engagement is actually about.
+#    redzone       -> EXCLUDE.  Sensitive / privileged / off-limits material we
+#                               must never ingest, even if it looks on-topic.
+#    spam          -> EXCLUDE.  Newsletters, marketing, automated noise.
+#    out_of_scope  -> EXCLUDE.  Real mail, but not about this engagement.
+#
+#  HOW TO TUNE IT: just rewrite the `description` text in plain language, and/or
+#  add a few short `anchors` (concrete example phrases). Save. The next
+#  classification picks up the change automatically — the bucket embeddings are
+#  rebuilt whenever this file's modification time changes.
+#
+#  The two buckets you actually craft per customer are `in_scope` and `redzone`.
+#  Describe the engagement as specifically as you can, and describe the
+#  off-limits material just as concretely.
+#
+#  SECURITY: when an email looks in-scope, a second vote runs between ONLY
+#  redzone and in_scope, biased toward exclusion. `margin` (below) is how much
+#  benefit of the doubt redzone gets — raise it to exclude more aggressively.
+# ============================================================================
+
+# Layer-2 security margin. In the redzone-vs-in_scope runoff, redzone wins
+# (the email is EXCLUDED) whenever:  redzone_score + margin >= in_scope_score.
+# 0.00 = pure nearest-match.  Larger = more cautious (drops borderline mail).
+margin: 0.03
+
+buckets:
+
+  in_scope:
+    action: include
+    description: |
+      Work product and discussion for the active consulting engagement: project
+      planning, deliverables, timelines, milestones and status updates; client
+      stakeholders coordinating on the agreed statement of work; meeting notes,
+      requirements, scoping, technical design and review of the work we were
+      hired to do; invoices and logistics tied directly to this project.
+    anchors:
+      - "project kickoff agenda and milestone plan for the engagement"
+      - "status update on the deliverables and next steps with the client team"
+      - "review feedback on the draft we sent for the agreed scope of work"
+      - "scheduling the workshop and sharing the requirements document"
+
+  redzone:
+    action: exclude
+    description: |
+      Sensitive, privileged or legally off-limits material that must never enter
+      the brain even when it concerns the same people or project: legal advice
+      and attorney-client privileged correspondence; M&A, due-diligence and deal
+      terms; litigation, disputes and settlement talks; individual employee HR,
+      compensation, performance, medical or disciplinary records; board-level or
+      regulatory-investigation matters; anything explicitly marked confidential,
+      privileged, or "do not forward".
+    anchors:
+      - "privileged and confidential — legal advice from outside counsel"
+      - "due diligence and deal terms for the proposed acquisition"
+      - "employee performance review and compensation details, HR confidential"
+      - "settlement discussion regarding the pending litigation, do not forward"
+
+  spam:
+    action: exclude
+    description: |
+      Bulk, automated or promotional mail with no bearing on the engagement:
+      marketing newsletters, product announcements, cold sales outreach, event
+      invitations from vendors, "unsubscribe" footers, password resets and other
+      automated system notifications.
+    anchors:
+      - "limited time offer — click here to unsubscribe from our newsletter"
+      - "cold sales pitch from a vendor we have no relationship with"
+      - "automated notification: your password was reset successfully"
+
+  out_of_scope:
+    action: exclude
+    description: |
+      Genuine human correspondence that simply is not about this engagement:
+      unrelated internal company chatter, personal messages, other clients or
+      other projects, social and logistics talk with no project substance.
+    anchors:
+      - "lunch plans and weekend logistics with a colleague"
+      - "a different client's project that has nothing to do with this work"
+      - "internal team chat unrelated to the engagement we were hired for"

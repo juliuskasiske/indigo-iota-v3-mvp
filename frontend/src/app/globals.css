@@ -1,0 +1,248 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* === Indigo Iota brand palette ===
+     Two primary colors:
+       - cream  #f0f0ec   (warm light)
+       - indigo #3812f3   (vibrant blue-violet)
+     Light theme by default. Text is black (or indigo for accents).
+     The 3D knowledge graph keeps its own dark canvas inside its card so
+     it still pops — everything else is light. */
+
+  /* Surfaces */
+  --background: 60 14% 93%;         /* #f0f0ec */
+  --background-elevated: 0 0% 100%; /* pure white for cards */
+  --background-soft: 55 10% 88%;    /* slightly darker for hover / insets */
+
+  /* Text */
+  --foreground: 0 0% 6%;            /* near-black body text */
+  --foreground-muted: 0 0% 38%;     /* secondary text */
+  --foreground-subtle: 0 0% 55%;    /* hints, labels */
+
+  /* Borders & inputs */
+  --border: 55 8% 80%;
+  --border-strong: 55 8% 70%;
+  --input: 0 0% 100%;
+  --ring: 250 88% 51%;              /* #3812f3 */
+
+  /* Brand */
+  --primary: 250 88% 51%;           /* #3812f3 */
+  --primary-foreground: 0 0% 100%;  /* white text on indigo */
+  --accent: 250 88% 51%;            /* same as primary — single brand colour */
+  --accent-foreground: 0 0% 100%;
+  --accent-soft: 250 88% 65%;
+
+  /* Semantic (tuned for light bg — darker / more saturated) */
+  --success: 152 70% 32%;
+  --warning: 32 95% 42%;
+  --destructive: 0 75% 48%;
+
+  /* Entity colours for the 3D graph — these still render on a dark
+     canvas inside the graph card, so the bright palette is fine. */
+  --entity-person: 188 95% 55%;     /* teal */
+  --entity-company: 280 80% 65%;    /* purple */
+  --entity-workstream: 250 88% 65%; /* indigo (brand-aligned) */
+  --entity-deliverable: 38 95% 60%; /* amber */
+  --entity-milestone: 152 75% 55%;  /* green */
+  --entity-objective: 0 75% 65%;    /* coral */
+
+  --radius: 0.6rem;
+}
+
+/* Local dark-mode override — used by the 3D knowledge graph card so its
+   overlays (legend, search, inspector) sit on dark surfaces against the
+   dark canvas. Wrap any subtree in a div with className="dark" to opt in. */
+.dark {
+  --background: 230 25% 5%;
+  --background-elevated: 230 22% 8%;
+  --background-soft: 230 18% 11%;
+  --foreground: 220 20% 96%;
+  --foreground-muted: 220 12% 65%;
+  --foreground-subtle: 220 10% 45%;
+  --border: 230 18% 18%;
+  --border-strong: 230 18% 24%;
+  --input: 230 18% 14%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-background-elevated: hsl(var(--background-elevated));
+  --color-background-soft: hsl(var(--background-soft));
+  --color-foreground: hsl(var(--foreground));
+  --color-foreground-muted: hsl(var(--foreground-muted));
+  --color-foreground-subtle: hsl(var(--foreground-subtle));
+
+  --color-border: hsl(var(--border));
+  --color-border-strong: hsl(var(--border-strong));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-soft: hsl(var(--accent-soft));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-destructive: hsl(var(--destructive));
+
+  --color-entity-person: hsl(var(--entity-person));
+  --color-entity-company: hsl(var(--entity-company));
+  --color-entity-workstream: hsl(var(--entity-workstream));
+  --color-entity-deliverable: hsl(var(--entity-deliverable));
+  --color-entity-milestone: hsl(var(--entity-milestone));
+  --color-entity-objective: hsl(var(--entity-objective));
+
+  --font-sans: var(--font-albert-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-albert-sans), ui-sans-serif, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle ambient indigo glow tying back to the brand. Soft so it doesn't
+   fight with the cream background. Sits at z-index:-1 (behind all content)
+   so page containers don't need a positive z-index to clear it — that kept
+   the 3D-graph fullscreen overlay from being trapped under the app header. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle at 12% 8%, hsl(250 88% 51% / 0.06), transparent 50%),
+    radial-gradient(circle at 88% 92%, hsl(250 88% 51% / 0.05), transparent 50%);
+}
+
+/* Scrollbar tuned for light bg */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong));
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground-subtle));
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* === Animations === */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--background-soft)) 0%,
+    hsl(var(--background-elevated)) 50%,
+    hsl(var(--background-soft)) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+  50%      { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+}
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* === Markdown styling (prose-iota) — light-mode tuned === */
+.prose-iota {
+  color: hsl(var(--foreground));
+  line-height: 1.65;
+}
+.prose-iota h1,
+.prose-iota h2,
+.prose-iota h3 {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose-iota h1 { font-size: 1.5rem; }
+.prose-iota h2 { font-size: 1.25rem; }
+.prose-iota h3 { font-size: 1.1rem; }
+.prose-iota p  { margin-bottom: 1em; }
+.prose-iota ul,
+.prose-iota ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+.prose-iota ul { list-style: disc; }
+.prose-iota ol { list-style: decimal; }
+.prose-iota li { margin-bottom: 0.25em; }
+.prose-iota strong {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+.prose-iota a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-iota code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: hsl(var(--background-soft));
+  padding: 0.15em 0.35em;
+  border-radius: 0.25em;
+  color: hsl(var(--primary));
+}
+.prose-iota blockquote {
+  border-left: 2px solid hsl(var(--primary));
+  padding-left: 1em;
+  margin: 1em 0;
+  color: hsl(var(--foreground-muted));
+  font-style: italic;
+}
+.prose-iota hr {
+  border-color: hsl(var(--border));
+  margin: 1.5em 0;
+}

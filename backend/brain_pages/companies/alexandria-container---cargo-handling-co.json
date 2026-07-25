@@ -1,0 +1,26 @@
+{
+  "frontmatter": {
+    "type": "company",
+    "name": "Alexandria Container & Cargo Handling Co",
+    "sector": "Container terminal operations",
+    "location": "Alexandria",
+    "relationship": "client",
+    "tags": []
+  },
+  "description": "Alexandria Container & Cargo Handling Co operates the main container terminal at the Port of Alexandria. The company issued an RFP seeking a full operational transformation that includes yard restructuring, berth scheduling, and equipment deployment.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "Alexandria Container & Cargo Handling Co (ACCHCO), operator of the main container terminal at the Port of Alexandria, issued an RFP seeking a full operational transformation covering yard restructuring, berth scheduling, and equipment deployment."
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "Alexandria Container & Cargo Handling Co (ACCHCO), the operator of the main container terminal at the Port of Alexandria, issued an RFP for a comprehensive operational transformation—yard restructuring, berth scheduling, and equipment deployment—and held an initial discussion with its Operations Director, Yusuf El-Masri."
+    },
+    {
+      "date": "2026-03-10",
+      "entry": "Alexandria Container & Cargo Handling Co., represented by Operations Director Yusuf El‑Masri, confirmed it will proceed with the three‑phase \"Transformation at ACCHCO\" engagement and requested to schedule the kickoff meeting for the week of March 23 at its Alexandria offices."
+    }
+  ],
+  "relationships": []
+}

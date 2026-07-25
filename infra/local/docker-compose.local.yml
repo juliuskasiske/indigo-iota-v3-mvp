@@ -1,0 +1,72 @@
+# Local preview of the PRODUCTION stack — same images, same migrations, same
+# same-origin routing as the Hetzner box, but on plain http://localhost:8080
+# (no TLS). Use this to see exactly what will deploy before deploying.
+#
+#   ./infra/local/preview.sh            # build + up, prints the URL
+#   # or manually:
+#   docker compose --env-file infra/local/.env.local \
+#       -f infra/local/docker-compose.local.yml up -d --build
+#
+# infra/local/.env.local is gitignored. Copy .env.local.example to start.
+# A separate project name keeps this isolated from the prod stack.
+
+name: indigo-iota-local
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Exposed so you can psql in locally. 5434 avoids clashing with the dev
+      # DB (infra/docker-compose.yml -> 5433) and Postgres.app (5432).
+      - "5434:5432"
+    volumes:
+      - pgdata_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/prod/backend.Dockerfile
+    restart: unless-stopped
+    # Layered: backend/.env holds the shared LLM secret (one copy, can't drift);
+    # .env.local holds the container-specific values (db host, dev-login) and,
+    # listed last, WINS on any overlapping key. Don't remove the DB/auth keys
+    # from .env.local — without them the container would inherit backend/.env's
+    # HOST database URLs, which don't resolve inside the container network.
+    env_file:
+      - ../../backend/.env
+      - .env.local
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - models_local:/opt/models
+      # Graph connector keypair (read-only). Host backend/secrets/ is gitignored;
+      # the GRAPH_CLIENT_*_PATH env vars point at these in-container paths.
+      - ../../backend/secrets:/secrets:ro
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/prod/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    # Swap the baked (TLS/ACME) Caddyfile for the local HTTP-only one.
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata_local:
+  models_local:

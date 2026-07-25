@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8 · How transformers work — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ---- diagram boxes ---- */
+.diagram {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin: 22px 0;
+  overflow-x: auto;
+}
+.diagram pre {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.diagram .caption {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--subtle);
+  text-align: center;
+  margin-top: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---- number callouts ---- */
+.num-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.num-card {
+  flex: 1;
+  min-width: 160px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.num-card .value {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--indigo);
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.num-card .label {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ---- step sequence ---- */
+.steps { counter-reset: step; margin: 18px 0; }
+.step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  margin: 14px 0;
+  align-items: start;
+}
+.step-num {
+  counter-increment: step;
+  content: counter(step);
+  width: 32px; height: 32px;
+  background: var(--indigo-tint-strong);
+  color: var(--indigo);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.step-body { padding-top: 4px; }
+.step-body p { margin: 0 0 6px; }
+
+/* ---- RAM breakdown table ---- */
+.ram-table { font-size: 14px; }
+.ram-table td:nth-child(2),
+.ram-table td:nth-child(3),
+.ram-table td:nth-child(4) {
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ram-total td { font-weight: 700; border-top: 2px solid var(--border-strong); }
+.ram-peak { background: rgba(207,127,16,0.08); }
+.ram-peak td { color: var(--warning); font-weight: 700; }
+
+/* ---- compare strip ---- */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+@media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+.compare .col {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.compare .col.highlight { border-color: var(--indigo); background: var(--indigo-tint); }
+.compare .col-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--indigo);
+  margin-bottom: 10px;
+}
+.compare .col-label.muted { color: var(--muted); }
+.compare h4 { margin: 0 0 10px; font-size: 16px; }
+.compare p { margin: 6px 0; font-size: 14px; color: var(--muted); }
+.compare p strong { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1 · Concepts</a>
+    <a href="02-architecture.html">2 · Architecture</a>
+    <a href="03-data-model.html">3 · Data model</a>
+    <a href="04-frontend-pages.html">4 · Pages</a>
+    <a href="05-flows.html">5 · Flows</a>
+    <a href="06-repo-atlas.html">6 · Repo atlas</a>
+    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
+    <a href="08-transformers.html" class="active">8 · Transformers</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 8</p>
+  <h1>How transformers work — and why jina-v3 needs 7 GB</h1>
+  <p class="lead">A 3Blue1Brown-style walkthrough: from "what is an embedding" to the full
+  self-attention mechanism, with the concrete numbers from jina-v3 at every step.
+  No prior ML knowledge assumed.</p>
+
+  <!-- ── THE NUMBERS AT A GLANCE ─────────────────────────────────────────── -->
+  <div class="num-row">
+    <div class="num-card"><div class="value">559 M</div><div class="label">parameters in jina-v3</div></div>
+    <div class="num-card"><div class="value">24</div><div class="label">transformer layers</div></div>
+    <div class="num-card"><div class="value">16</div><div class="label">attention heads per layer</div></div>
+    <div class="num-card"><div class="value">1 024</div><div class="label">hidden dimension</div></div>
+    <div class="num-card"><div class="value">8 192</div><div class="label">max context tokens</div></div>
+    <div class="num-card"><div class="value">250 K</div><div class="label">vocabulary size (multilingual)</div></div>
+  </div>
+
+
+  <!-- ── 1. WORD AS A POINT ─────────────────────────────────────────────── -->
+  <h2>1 · From word to coordinate</h2>
+  <p>
+    The foundational idea: every word (and every fragment of a word) maps to a point
+    in a high-dimensional space. The position encodes meaning. Words that mean similar
+    things live near each other; unrelated words live far apart.
+  </p>
+  <p>
+    In two dimensions you can draw it:
+  </p>
+
+  <div class="diagram">
+    <pre>
+        ▲
+        │                        "monarch"
+        │  "democracy"              ●
+        │      ●
+        │
+        │                                   "dog"
+        │                                    ●
+        │              "cat"
+        │               ●
+        │
+        └────────────────────────────────────────────▶
+           political ◀──────────────────▶ biological
+    </pre>
+    <div class="caption">A toy 2-D embedding space — 2 axes, human-labelled for clarity. jina-v3 uses 1 024 axes, none of which are human-labelled.</div>
+  </div>
+
+  <p>
+    jina-v3 uses <strong>1 024 dimensions</strong>. You cannot draw it, but the
+    geometry is identical — closeness = similarity, direction = meaning, arithmetic
+    works (<code>king − man + woman ≈ queen</code>).
+  </p>
+  <p>
+    Every word-piece in jina-v3's vocabulary has a fixed starting coordinate stored
+    in a giant lookup table:
+  </p>
+
+  <div class="diagram">
+    <pre>
+  VOCABULARY TABLE   250 002 rows × 1 024 columns
+  ┌────────────────┬──────────────────────────────────────────────────────────┐
+  │  Token ID      │  Coordinate vector (1 024 numbers)                       │
+  ├────────────────┼──────────────────────────────────────────────────────────┤
+  │     4 312      │  [ 0.14, −0.83,  0.22,  0.61, … (1 020 more) …  −0.19 ] │
+  │     8 891      │  [ 0.91,  0.04, −0.55,  0.18, … (1 020 more) …   0.73 ] │
+  │    12 044      │  [ −0.33, 0.67,  0.11, −0.90, … (1 020 more) …   0.05 ] │
+  │       …        │                     …                                     │
+  └────────────────┴──────────────────────────────────────────────────────────┘
+
+  RAM cost: 250 002 × 1 024 × 4 bytes (float32) = 1 024 MB ≈ 1 GB
+    </pre>
+    <div class="caption">The token embedding table — the first major RAM consumer.</div>
+  </div>
+
+
+  <!-- ── 2. THE PROBLEM ─────────────────────────────────────────────────── -->
+  <h2>2 · The fundamental problem — context</h2>
+
+  <p>The lookup table gives every token a <em>fixed</em> coordinate. That breaks immediately:</p>
+
+  <div class="diagram">
+    <pre>
+  Sentence A:  "I walked along the river  <u>bank</u>  at sunset."
+  Sentence B:  "She deposited cash at the <u>bank</u>  before closing."
+
+  After lookup table:
+    "bank" in A  →  [ 0.61, −0.55, 0.18, … ]   ← identical
+    "bank" in B  →  [ 0.61, −0.55, 0.18, … ]   ← identical
+
+  But they mean completely different things.
+    </pre>
+    <div class="caption">A static lookup table cannot represent context-dependent meaning.</div>
+  </div>
+
+  <p>
+    This is the problem the transformer was invented to solve. Its job is to
+    <em>update</em> each token's coordinate by looking at the surrounding tokens,
+    so that by the end of the network "bank" in sentence A has a different
+    coordinate than "bank" in sentence B.
+  </p>
+
+
+  <!-- ── 3. TOKENS ─────────────────────────────────────────────────────── -->
+  <h2>3 · Tokens — what the model actually sees</h2>
+
+  <p>
+    The model does not see words. It sees <strong>tokens</strong> — chunks produced
+    by a subword tokeniser. Short common words are one token; rare or compound words
+    split into pieces. This lets the vocabulary stay bounded at 250 K entries while
+    handling any language.
+  </p>
+
+  <div class="diagram">
+    <pre>
+  Input:   "Transformers sind mächtig."
+
+  Tokens:  ["Trans", "##form", "##ers", "sind", "mäch", "##tig", "."]
+             ↓         ↓         ↓        ↓       ↓       ↓       ↓
+  IDs:    [12044,   8891,    4312,   31002,  58821,  9034,   119  ]
+
+  Each ID → one row from the vocabulary table → one 1 024-number vector.
+    </pre>
+    <div class="caption">Subword tokenisation. "##" marks a continuation piece. German text tokenises naturally because jina-v3's vocabulary was trained on 100+ languages.</div>
+  </div>
+
+  <div class="callout analogy">
+    Tokens are like syllables in a spoken word — "trans·form·ers". You don't need
+    a separate dictionary entry for every compound; you build them from pieces you
+    already know.
+  </div>
+
+
+  <!-- ── 4. RESIDUAL STREAM ─────────────────────────────────────────────── -->
+  <h2>4 · The residual stream — a shared whiteboard</h2>
+
+  <p>
+    Imagine a whiteboard with one column per token. Each column holds
+    <strong>1 024 numbers</strong> — the model's current best understanding of
+    that token.
+  </p>
+
+  <div class="diagram">
+    <pre>
+  Tokens:    "I"       "went"    "to"      "bank"    "."
+             ──────    ──────    ──────    ──────    ──────
+  Dim  1:    0.14     −0.23      0.88      0.61     −0.44
+  Dim  2:   −0.83      0.71     −0.12     −0.55      0.92
+  Dim  3:    0.22     −0.44      0.33      0.18      0.07
+    …          …         …         …         …         …
+  Dim 1024:  0.61      0.08     −0.91      0.73     −0.28
+
+             ◀── 5 columns × 1 024 rows = 5 120 numbers total ──▶
+    </pre>
+    <div class="caption">The residual stream after the embedding lookup. All columns start as static dictionary values. The transformer's job is to rewrite them.</div>
+  </div>
+
+  <p>
+    This whiteboard is called the <strong>residual stream</strong>. Each of the
+    24 transformer layers <em>adds</em> small corrections to it — it never
+    replaces the whole thing, only adjusts it. By layer 24, every column
+    reflects not just the token itself but its full context in the sentence.
+  </p>
+
+  <div class="callout">
+    The residual stream for a 512-token email costs:
+    <br><code>512 tokens × 1 024 dims × 4 bytes = 2 MB</code> per copy.
+    Negligible. The RAM problem is elsewhere.
+  </div>
+
+
+  <!-- ── 5. ONE ATTENTION HEAD ──────────────────────────────────────────── -->
+  <h2>5 · One attention head — step by step</h2>
+
+  <p>
+    Each transformer layer runs <strong>self-attention</strong>: every token gets
+    to look at every other token and decide how much to borrow from it.
+    There are three learned weight matrices — <strong>Q</strong>, <strong>K</strong>,
+    and <strong>V</strong> — each of size <code>1 024 × 64</code>
+    (one head's share of the 1 024 hidden dims).
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <p><strong>Project every token into three 64-number vectors</strong></p>
+        <div class="diagram" style="margin:10px 0">
+          <pre>
+  "bank" column (1 024 numbers)
+      × Q matrix (1 024 × 64)  →  query  q  (64 numbers) — "what am I looking for?"
+      × K matrix (1 024 × 64)  →  key    k  (64 numbers) — "what do I contain?"
+      × V matrix (1 024 × 64)  →  value  v  (64 numbers) — "what should I share?"
+          </pre>
+        </div>
+        <p>Every token generates its own q, k, and v. That's 3 projections × 5 tokens = 15 small vectors for a 5-token sentence.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <p><strong>Score every other token against "bank"'s question</strong></p>
+        <div class="diagram" style="margin:10px 0">
+          <pre>
+  score("bank" → "river")   = dot_product(q_bank, k_river)   / √64  =  8.4
+  score("bank" → "went")    = dot_product(q_bank, k_went)    / √64  =  2.1
+  score("bank" → "to")      = dot_product(q_bank, k_to)      / √64  =  1.0
+  score("bank" → "I")       = dot_product(q_bank, k_I)       / √64  =  0.9
+  score("bank" → ".")       = dot_product(q_bank, k_dot)     / √64  =  0.5
+
+  The √64 (= 8) prevents the numbers from growing so large that softmax
+  pushes all weight onto one token and ignores the rest.
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <p><strong>Softmax — turn raw scores into a probability distribution</strong></p>
+        <div class="diagram" style="margin:10px 0">
+          <pre>
+  Sentence A:  "I went to the river bank."
+
+  "bank" pays attention to:
+    "river"  ██████████████████████████████████  62 %   ← geography signal
+    "went"   ████████                            18 %
+    "to"     ████                                 8 %
+    "I"      ███                                  7 %
+    "."      ██                                   5 %
+
+  —————————————————————————————————————————————————————
+
+  Sentence B:  "She deposited cash at the bank."
+
+  "bank" pays attention to:
+    "deposited"  ██████████████████████████████████  68 %   ← finance signal
+    "cash"       █████████████                       24 %
+    "at"         ██                                   5 %
+    "the"        █                                    2 %
+    "."          ▏                                    1 %
+
+  Same token, completely different attention pattern.
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <p><strong>Pull value vectors, weighted by attention — then add to the whiteboard</strong></p>
+        <div class="diagram" style="margin:10px 0">
+          <pre>
+  new_info_for_bank =
+      0.62 × v_river
+    + 0.18 × v_went
+    + 0.08 × v_to
+    + 0.07 × v_I
+    + 0.05 × v_dot
+
+  This produces a 64-number vector. It gets ADDED back to "bank"'s
+  column on the residual stream whiteboard — adjusting it, not replacing it.
+          </pre>
+        </div>
+        <p>
+          After this update, "bank" in sentence A has absorbed meaning from "river".
+          Its column on the whiteboard now points toward the geographical region of
+          vector space. In sentence B it absorbed "deposited" and "cash" instead,
+          pointing toward finance.
+        </p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── 6. 16 HEADS ───────────────────────────────────────────────────── -->
+  <h2>6 · 16 heads per layer — what each one looks for</h2>
+
+  <p>
+    One head gives one 64-number slice of context. jina-v3 runs
+    <strong>16 heads simultaneously per layer</strong>, each with independent Q/K/V
+    matrices. They learn to attend to different structural patterns:
+  </p>
+
+  <div class="diagram">
+    <pre>
+  HEAD   DIMS    WHAT IT TENDS TO LEARN (emergent, not programmed)
+  ─────  ──────  ──────────────────────────────────────────────────────────────
+   1     0– 63   Grammatical role — subject, verb, object dependencies
+   2    64–127   Coreference — "he" links back to "Johannes" three words earlier
+   3   128–191   Sentence position — early vs late, before/after a comma
+   4   192–255   Named-entity type — person name, place, organisation, date
+   5   256–319   Negation scope — the reach of "not", "kein", "never"
+   6   320–383   Syntactic head — which word governs a prepositional phrase
+   7   384–447   Semantic field — body-of-water words cluster together
+   8   448–511   Cross-lingual alignment — "Geld" and "money" occupy same slot
+   …      …      …
+  16   960–1023  (Something the network found useful; not interpretable)
+    </pre>
+    <div class="caption">These specialisations emerge from training — they are never explicitly programmed. Each head independently runs the four steps above.</div>
+  </div>
+
+  <p>
+    All 16 outputs (16 × 64 = 1 024 numbers) are concatenated and passed through
+    a final <strong>output projection</strong> matrix (1 024 × 1 024) that blends
+    them back into the shared residual stream. The whiteboard column stays 1 024-wide
+    — same shape in, same shape out.
+  </p>
+
+  <h3>RAM cost of one attention layer</h3>
+  <div class="diagram">
+    <pre>
+  Per head:           Q: 1024×64,  K: 1024×64,  V: 1024×64
+  16 heads:           3 matrices × 16 × 1024 × 64  =  3 145 728 params
+  Output projection:  1024 × 1024                  =  1 048 576 params
+  ─────────────────────────────────────────────────────────────────────
+  Total per layer:    ~4 194 304 params  =  4 M params  × 4 B  =  16 MB (float32)
+    </pre>
+  </div>
+
+
+  <!-- ── 7. FEED-FORWARD ────────────────────────────────────────────────── -->
+  <h2>7 · The feed-forward block — per-token pattern matching</h2>
+
+  <p>
+    After attention shares information across tokens, each token's column passes
+    through a two-layer MLP independently. No cross-token communication here —
+    it's the same network applied to each column in isolation.
+  </p>
+
+  <div class="diagram">
+    <pre>
+  "bank" column (1 024 numbers)
+       ↓
+  Expand:   × W₁  (1 024 × 4 096)  →  4 096 numbers    ← 4× wider
+       ↓
+  Activate: GELU non-linearity       →  4 096 numbers    ← kills negative activations
+       ↓
+  Compress: × W₂  (4 096 × 1 024)  →  1 024 numbers    ← back to stream width
+       ↓
+  Added to the residual stream (just like attention output)
+    </pre>
+    <div class="caption">The FFN expand–activate–compress pattern. The 4× expansion (1 024 → 4 096 → 1 024) is where factual associations are thought to be stored — "Paris" → "capital" → "France".</div>
+  </div>
+
+  <h3>RAM cost of one FFN layer</h3>
+  <div class="diagram">
+    <pre>
+  W₁:  1 024 × 4 096  =  4 194 304 params  →  16 MB (float32)
+  W₂:  4 096 × 1 024  =  4 194 304 params  →  16 MB (float32)
+  ─────────────────────────────────────────────────────────────
+  Total per layer:    ~8 M params  =  32 MB (float32)
+    </pre>
+  </div>
+
+
+  <!-- ── 8. 24 LAYERS ───────────────────────────────────────────────────── -->
+  <h2>8 · 24 layers — what stacking achieves</h2>
+
+  <p>
+    The whiteboard gets rewritten 24 times. Attention + FFN = one layer.
+    Each pass adds a new level of abstraction:
+  </p>
+
+  <div class="diagram">
+    <pre>
+  ┌────────────────────────────────────────────────────────────┐
+  │  LAYER  1:  Surface structure — punctuation, word order    │
+  │  LAYER  4:  Morphology — verb tenses, plural endings       │
+  │  LAYER  8:  Syntactic roles — subject/verb/object arcs     │
+  │  LAYER 12:  Named entities — person, organisation, place   │
+  │  LAYER 16:  Semantic frames — finance, geography, medicine  │
+  │  LAYER 20:  Cross-sentence coherence, discourse structure  │
+  │  LAYER 24:  Final contextualised representation            │
+  │              ↓                                             │
+  │    Each token column now reflects the full sentence.       │
+  └────────────────────────────────────────────────────────────┘
+    </pre>
+    <div class="caption">Approximate specialisation by depth (from mechanistic interpretability research). Not strict boundaries — representations are distributed across layers.</div>
+  </div>
+
+  <p>
+    "Bank" entered layer 1 with the same column in both sentences. It exits layer 24
+    with a column shaped by everything around it. The two sentences now produce
+    meaningfully different 1 024-number columns for that token.
+  </p>
+
+
+  <!-- ── 9. POOLING ─────────────────────────────────────────────────────── -->
+  <h2>9 · Pooling — collapsing many columns into one vector</h2>
+
+  <p>
+    After 24 layers you have one 1 024-number column per token. But you need
+    <em>one vector for the whole input</em> to store in the database and compare
+    with cosine similarity.
+  </p>
+
+  <div class="diagram">
+    <pre>
+  After layer 24:
+
+  "I"      "went"   "to"     "bank"   "."
+  ──────   ──────   ──────   ──────   ──────
+   0.21    −0.18    0.74     0.89    −0.31     ← dim 1
+  −0.77     0.63   −0.04    −0.22     0.88     ← dim 2
+    …         …       …       …       …
+  ──────   ──────   ──────   ──────   ──────
+      ↓
+  MEAN POOLING: average each dimension across all 5 columns
+      ↓
+  [ (0.21−0.18+0.74+0.89−0.31)/5,  (−0.77+0.63−0.04−0.22+0.88)/5,  … ]
+  =  [ 0.27,  0.096,  … ]       ← one 1 024-number vector
+
+  This is the embedding you store in the pgvector column.
+  Cosine similarity between two such vectors = semantic relatedness.
+    </pre>
+    <div class="caption">Mean pooling — the simplest and most common method. jina-v3 uses a learned pooling variant, but the intuition is the same.</div>
+  </div>
+
+  <div class="callout analogy">
+    Pooling is like averaging the votes of 512 jury members into a single verdict.
+    Each member (token) has already heard from every other member (via attention)
+    before casting their vote.
+  </div>
+
+
+  <!-- ── 10. RAM BREAKDOWN ─────────────────────────────────────────────── -->
+  <h2>10 · Where the 7 GB comes from — the definitive breakdown</h2>
+
+  <p>
+    Your server saw <code>anon-rss: 7 272 316 kB</code> (≈ 7.2 GB) in the OOM log.
+    Here is exactly where that comes from.
+  </p>
+
+  <table class="ram-table">
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Parameters</th>
+        <th>INT8 (on-disk)</th>
+        <th>Float32 (in-RAM)</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Token embedding table</td>
+        <td>256 M</td>
+        <td>256 MB</td>
+        <td>1 024 MB</td>
+        <td>250 002 vocab × 1 024 dims</td>
+      </tr>
+      <tr>
+        <td>24 × attention (Q, K, V, O)</td>
+        <td>24 × 4 M = 96 M</td>
+        <td>96 MB</td>
+        <td>384 MB</td>
+        <td>3 projection + 1 output per layer</td>
+      </tr>
+      <tr>
+        <td>24 × feed-forward (W₁, W₂)</td>
+        <td>24 × 8 M = 192 M</td>
+        <td>192 MB</td>
+        <td>768 MB</td>
+        <td>1 024→4 096→1 024 per layer</td>
+      </tr>
+      <tr>
+        <td>Layer norms, biases, LoRA adapters</td>
+        <td>~15 M</td>
+        <td>15 MB</td>
+        <td>60 MB</td>
+        <td>jina-v3 task-specific LoRA heads</td>
+      </tr>
+      <tr class="ram-total">
+        <td>Model weights total</td>
+        <td>~559 M</td>
+        <td>~559 MB</td>
+        <td>~2 240 MB</td>
+        <td>fastembed downloads the INT8 ONNX file</td>
+      </tr>
+      <tr>
+        <td colspan="5" style="padding:6px 12px; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--subtle); background:var(--soft);">ONNX Runtime overhead (on top of weights)</td>
+      </tr>
+      <tr>
+        <td>Graph deserialisation</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~300 MB</td>
+        <td>ONNX's internal node graph copy</td>
+      </tr>
+      <tr class="ram-peak">
+        <td>Graph optimisation peak ⚠</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~2–4 GB</td>
+        <td>Holds original + rewritten graph simultaneously during constant folding, op fusion. <strong>This is the spike.</strong></td>
+      </tr>
+      <tr>
+        <td>Inference session (post-opt)</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~600 MB</td>
+        <td>Pre-allocated I/O buffers, thread pool</td>
+      </tr>
+      <tr>
+        <td colspan="5" style="padding:6px 12px; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--subtle); background:var(--soft);">Python process</td>
+      </tr>
+      <tr>
+        <td>Python runtime + all imports</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~500 MB</td>
+        <td>fastembed, numpy, psycopg, FastAPI, etc.</td>
+      </tr>
+      <tr>
+        <td>Activation memory (512-token email)</td>
+        <td>—</td>
+        <td>—</td>
+        <td>&lt; 50 MB</td>
+        <td>Attention matrices + FFN intermediates, computed one layer at a time. Negligible.</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr class="ram-total">
+        <td>Steady-state (after init)</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~2–3 GB</td>
+        <td>What the process uses once the ONNX optimisation is done</td>
+      </tr>
+      <tr class="ram-peak">
+        <td>Peak during ONNX init ⚠</td>
+        <td>—</td>
+        <td>—</td>
+        <td>~4–7 GB</td>
+        <td>The transient spike that hits the OOM killer</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="callout warn">
+    The crash loop multiplied this. With 4 containers dying and restarting in 10-second
+    intervals, each in the ONNX init phase simultaneously, the peak hit
+    4 × ~2 GB = ~8 GB — exhausting all physical RAM on a 7.6 GB server in seconds.
+  </div>
+
+  <p>
+    Note that the user's formula <code>(1 024 × context_tokens) × 16/4/8</code>
+    was computing <em>activation memory</em> — which is &lt; 50 MB and completely
+    irrelevant. The RAM problem is the <strong>model weight storage + ONNX
+    optimisation overhead</strong>, which is independent of input length.
+  </p>
+
+
+  <!-- ── 11. WHY SMALL MODEL WORKS ─────────────────────────────────────── -->
+  <h2>11 · Why a smaller model is fine for email classification</h2>
+
+  <p>
+    jina-v3's size is justified when you need to embed long legal documents (8 192
+    tokens), compare across 100 languages simultaneously, or serve millions of
+    queries. For "is this email work-relevant?" — a binary classifier over typical
+    emails of 50–300 tokens — the quality difference between a 559 M-param model
+    and a 118 M-param model is not measurable in practice.
+  </p>
+
+  <div class="compare">
+    <div class="col">
+      <div class="col-label muted">Current — jina-v3</div>
+      <h4>jinaai/jina-embeddings-v3</h4>
+      <p><strong>559 M parameters</strong></p>
+      <p><strong>1 024 dimensions</strong></p>
+      <p><strong>8 192 token context</strong></p>
+      <p><strong>~3 GB steady-state RAM</strong></p>
+      <p><strong>~4–7 GB init peak</strong></p>
+      <p>Overkill for a scope gate classifier. Useful if you need long-document embedding or fine-grained cross-lingual nuance.</p>
+    </div>
+    <div class="col highlight">
+      <div class="col-label">Recommended swap</div>
+      <h4>intfloat/multilingual-e5-small</h4>
+      <p><strong>118 M parameters</strong></p>
+      <p><strong>384 dimensions</strong></p>
+      <p><strong>512 token context</strong></p>
+      <p><strong>~300 MB steady-state RAM</strong></p>
+      <p><strong>~500 MB init peak</strong></p>
+      <p>Still multilingual (German + English). Still transformer + attention. 10× lighter. Classification accuracy on short emails is indistinguishable.</p>
+    </div>
+  </div>
+
+  <p>
+    The switch requires one DB migration (resize the embedding column from 1 024 to
+    384 dims, recreate the HNSW index) and a one-line change in
+    <code>src/ingestion/index/embeddings.py</code>. Since no successful backfill
+    has run yet, there are no stored embeddings to invalidate — the migration is
+    clean.
+  </p>
+
+  <div class="callout">
+    Both models have the same architecture: token lookup → residual stream →
+    N × (attention + FFN) → mean pool. The only differences are N (6 layers
+    instead of 24), hidden dimension (384 instead of 1 024), and context window
+    (512 instead of 8 192). Every concept on this page applies to both.
+  </div>
+
+
+  <!-- ── SUMMARY ────────────────────────────────────────────────────────── -->
+  <h2>Summary</h2>
+
+  <table>
+    <thead>
+      <tr><th>Concept</th><th>What it does</th><th>jina-v3 numbers</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Embedding table</td><td>Maps each token ID to a starting coordinate vector</td><td>250 002 × 1 024 = 256 M params = 1 GB</td></tr>
+      <tr><td>Residual stream</td><td>The shared "whiteboard" that layers read from and write to</td><td>seq_len × 1 024 floats (≈ 2 MB for 512 tokens)</td></tr>
+      <tr><td>Q / K / V projections</td><td>Produce per-token "questions", "labels", and "answers" for attention</td><td>3 × 16 heads × 1 024 × 64 = 3.1 M params per layer</td></tr>
+      <tr><td>Attention scores</td><td>Dot products → softmax → how much each token borrows from others</td><td>16 heads × seq² scores = 16 × 512² = 4 M values per layer</td></tr>
+      <tr><td>Feed-forward</td><td>Per-token pattern matching; stores factual associations</td><td>1 024 → 4 096 → 1 024, 8 M params per layer</td></tr>
+      <tr><td>24 layers</td><td>Iteratively refine from surface syntax to abstract semantics</td><td>24 × (4 M + 8 M) = 288 M params</td></tr>
+      <tr><td>Mean pooling</td><td>Average all token columns into one sentence vector</td><td>1 024-number output</td></tr>
+      <tr><td>ONNX init peak</td><td>Graph optimisation holds 2–4× weights simultaneously</td><td>~4–7 GB transient spike — the OOM culprit</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pager">
+    <a href="07-mcp.html">← 7 · MCP &amp; connectors</a>
+    <a class="next" href="09-comprehend-walkthrough.html">Next: Comprehend walkthrough →</a>
+  </div>
+</main>
+</body>
+</html>

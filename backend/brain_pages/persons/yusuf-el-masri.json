@@ -1,0 +1,49 @@
+{
+  "frontmatter": {
+    "type": "person",
+    "name": "Yusuf El-Masri",
+    "role": "Operations Director",
+    "email": null,
+    "location": "Alexandria",
+    "relationship": "client",
+    "tags": []
+  },
+  "description": "Yusuf El-Masri serves as the Operations Director of Alexandria Container & Cargo Handling Co (ACCHCO). ACCHCO operates the primary container terminal at the Port of Alexandria.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "Yusuf El-Masri, the Operations Director of Alexandria Container & Cargo Handling Co, took part in an initial call concerning the company's RFP for a full operational transformation of its main container terminal."
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "Yusuf El-Masri is identified as the Operations Director of Alexandria Container & Cargo Handling Co, which operates the main container terminal at the Port of Alexandria."
+    },
+    {
+      "date": "2026-03-10",
+      "entry": "Yusuf El-Masri, Operations Director of Alexandria Container & Cargo Handling Co., confirmed the three‑phase Transformation at ACCHCO engagement and proposed scheduling its kickoff for the week of March 23 at the company’s Alexandria offices."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Yusuf El-Masri provided RPX Optimization full access to ACCHCO’s terminal operating system data during the Alexandria kickoff, enabling Phase 1 diagnostics."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "Yusuf El-Masri granted full access to ACCHCO’s terminal operating system data, allowing Phase 1 diagnostics to commence following the kickoff in Alexandria."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "In early May, Yusuf El-Masri was asked by Felix Kasiske of RPX Optimization GmbH to dedicate two days of his operations team to the Phase 2 redesign after Phase 1 confirmed that yard congestion stemmed from poor block allocation."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "In early May, Yusuf El-Masri's operations team was scheduled to spend two days with Felix Kasiske of RPX Optimization GmbH to begin Phase 2 redesign after Phase 1 confirmed yard congestion was caused by poor block allocation."
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "works_at",
+      "object": "Alexandria Container & Cargo Handling Co.",
+      "object_type": "company"
+    }
+  ]
+}

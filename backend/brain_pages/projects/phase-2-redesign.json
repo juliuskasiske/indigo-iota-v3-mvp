@@ -1,0 +1,20 @@
+{
+  "frontmatter": {
+    "type": "project",
+    "name": "Phase 2 redesign",
+    "status": "active",
+    "tags": []
+  },
+  "description": "Phase 2 redesign follows the completion of Phase 1, which identified that yard congestion is caused by poor block allocation rather than insufficient space and that roughly 20 % of effective capacity can be recovered through re‑zoning. The redesign will involve a two‑day session with the operations team in early May to implement these changes.",
+  "timeline": [
+    {
+      "date": "2026-04-15",
+      "entry": "After completing Phase 1, the team moved into Phase 2 redesign, with Felix requesting two days of the operations team in early May to continue the work."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "In early May, Phase 2 redesign will commence, with Felix requesting two days of Yusuf’s operations team to work on it."
+    }
+  ],
+  "relationships": []
+}

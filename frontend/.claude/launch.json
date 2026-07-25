@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "iota",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/juliuskasiske/Documents/indigo_iota/frontend_demo && PATH=/usr/local/bin:/usr/bin:/bin exec /usr/local/bin/npm run dev"
+      ],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

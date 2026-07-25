@@ -1,0 +1,5 @@
+# Test-only dependencies, kept out of the runtime image (requirements.txt).
+# Install in the api container to run the suite:
+#   docker exec indigo-iota-local-api-1 pip install -r requirements-dev.txt
+#   docker exec indigo-iota-local-api-1 python -m pytest
+pytest>=8.0,<9.0

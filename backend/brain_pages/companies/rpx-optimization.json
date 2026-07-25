@@ -1,0 +1,50 @@
+{
+  "frontmatter": {
+    "type": "company",
+    "name": "RPX Optimization",
+    "sector": "intermodal and maritime industry",
+    "location": "US",
+    "relationship": "client",
+    "tags": []
+  },
+  "description": "RPX Optimization has commenced a new engagement titled \"Transformation at ACCHCO\" with Alexandria Container & Cargo Handling Co (ACCHCO), the operator of the main container terminal at the Port of Alexandria. The project involves a full operational transformation covering yard restructuring, berth scheduling, and equipment deployment, with Felix leading the modeling work.",
+  "timeline": [
+    {
+      "date": "2026-03-02",
+      "entry": "RPX Optimization's Managing Director Michael Dempsey announced that the firm will pursue a full operational transformation for Alexandria Container & Cargo Handling Co, assigning Felix to lead the modeling work and naming the engagement \"Transformation at ACCHCO\"."
+    },
+    {
+      "date": "2026-03-02",
+      "entry": "RPX Optimization’s Managing Director Michael Dempsey informed Felix that the firm will lead the modeling for a full operational transformation—including yard restructuring, berth scheduling, and equipment deployment—at Alexandria Container & Cargo Handling Co, to be called “Transformation at ACCHCO.”"
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "RPX Optimization Managing Director Felix Kasiske confirmed he will lead the modeling, reviewed the ACCHCO RFP highlighting an aging straddle‑carrier fleet and severe peak‑season yard congestion, and proposed a three‑phase project plan (diagnostics, redesign, implementation support)."
+    },
+    {
+      "date": "2026-03-04",
+      "entry": "RPX Optimization's Managing Director Felix Kasiske agreed to lead the modeling for ACCHCO's project, identified the main constraints as an aging straddle-carrier fleet and severe peak-season yard congestion, and proposed a three-phase approach of diagnostics, redesign, and implementation support."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "RPX Optimization kicked off Phase 1 diagnostics for ACCHCO in Alexandria, secured full access to the terminal operating system data, and identified a yard utilization peak of 94%, well above the 75% best‑practice threshold."
+    },
+    {
+      "date": "2026-03-24",
+      "entry": "RPX Optimization kicked off Phase 1 diagnostics for ACCHCO in Alexandria, gained full access to the terminal operating system data, identified yard utilization peaking at 94% (above the 75% best‑practice threshold), and began building a simulation model."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "RPX Optimization GmbH’s Managing Director Felix Kasiske reported that Phase 1 of their yard‑congestion simulation was completed, identified poor block allocation—not lack of space—as the cause, projected a roughly 20 % capacity gain through re‑zoning, and announced moving into Phase 2 redesign with a two‑day operations‑team workshop scheduled for early May."
+    },
+    {
+      "date": "2026-04-15",
+      "entry": "RPX Optimization announced that Phase 1 of its simulation study was complete, identifying poor block allocation as the cause of yard congestion and projecting a roughly 20% capacity gain from re‑zoning, and scheduled two days with the operations team in early May to begin Phase 2 redesign."
+    },
+    {
+      "date": "2026-05-26",
+      "entry": "RPX Optimization states it has completed over 225 projects worldwide and lists its leadership as Managing Director Dr. Felix Kasiske (Germany) and VP Business Development Michael Dempsey (USA)."
+    }
+  ],
+  "relationships": []
+}
