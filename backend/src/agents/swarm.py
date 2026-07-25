@@ -1,25 +1,26 @@
 """The agent swarm: a startable/stoppable loop that reads a tenant's brain and
 investigates where value is leaking, logging everything it does.
 
-Design (deliberately small, but real):
+Each role (hypothesis generation, planning, validator, opportunity sizer, judge)
+is an LLM call with its own system prompt (see the ``P_*`` constants), grounded
+in the objective function and the real brain context (entities + chunk text).
+When no LLM key is configured — or a call fails — each role falls back to a
+deterministic heuristic so the loop always makes progress.
 
-* One in-process ``asyncio`` task per tenant brain DB drives the loop. Because
-  the API runs a single uvicorn worker, in-memory task state is authoritative —
-  ``is_running`` is driven by the live task, not by a DB flag that could go
-  stale across a restart.
-* The loop reads REAL brain data (companies from ``entities``, evidence from
-  ``chunks``) and appends to ``agent_events``. The Overview builds both a live
-  log and a hypothesis tree from those rows.
-* Reasoning is currently heuristic/retrieval-based so it runs with no LLM key.
-  Each role (hypothesis generation, planning, validator, opportunity sizer,
-  judge) is a stage in the loop; swap the bodies for LLM calls when a key is set.
+The loop appends to ``agent_events``; the Overview builds a live log and a
+hypothesis tree from those rows. One in-process asyncio task drives the loop per
+tenant DB; because the API runs a single uvicorn worker, that in-memory task is
+authoritative for "is it running", not a DB flag that could go stale.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 from functools import partial
 
+from src import config
 from src.db.connection import get_tenant_connection
 
 log = logging.getLogger("iota.swarm")
@@ -58,18 +59,237 @@ ROLES = [
     },
 ]
 
-# Signals a Validator scans the brain's chunk text for.
-_KEYWORDS = [
-    "margin", "discount", "price", "cost", "manual", "repeat", "repetit",
-    "automat", "demurrage", "overtime", "waste", "rework", "delay",
-    "inefficien", "backlog", "churn", "overrun",
-]
+# TODO: read this from the persisted Objectives tab; hardcoded default for now.
+DEFAULT_OBJECTIVE = (
+    "Prioritize, in order: (1) gross margin, (2) cost reduction, "
+    "(3) automation of manual/repetitive work."
+)
 
 # db_name -> {"task": asyncio.Task, "run_id": int}
 _runs: dict[str, dict] = {}
 
 
-# --- DB helpers (sync; called via run_in_executor from the loop) ------------
+# --- system prompts (one per agent role) ------------------------------------
+
+P_HYPO = (
+    "You are the Hypothesis Generation agent in a swarm of AI consultants running a "
+    "corporate diagnostic for a company. From the objective function and the context "
+    "the firm has already ingested (people, companies, projects, and excerpts from "
+    "their emails and files), propose the most promising, TESTABLE hypotheses about "
+    "where value is leaking or could be created. Weight them by the objective "
+    "function. Each hypothesis must be specific, falsifiable, and worth a partner's "
+    "time — not a platitude. Do not repeat hypotheses already discarded. "
+    'Return STRICT JSON only: {"hypotheses":[{"label":"<one concrete sentence>",'
+    '"rationale":"<one sentence why>"}]}. Give 2 to 4 hypotheses.'
+)
+
+P_PLAN = (
+    'You are the Planning agent. Given one hypothesis, ask "what would need to be '
+    'true for this to hold?" and lay out the concrete steps to validate or kill it: '
+    "which data, documents, metrics, or interviews are needed, in order. Be specific "
+    'and testable. Return STRICT JSON only: {"steps":["<step>"]}. Give 3 to 5 steps.'
+)
+
+P_VALID = (
+    "You are the Validator agent. You are given a hypothesis and the evidence "
+    "available in the firm's brain (excerpts from emails, files, and entity notes). "
+    "Decide, using ONLY the evidence provided, whether it supports the hypothesis. "
+    "NEVER invent facts or numbers. Extract the specific supporting facts, grounded "
+    "in and citing the source. If the evidence is insufficient, set supported to "
+    'false. Return STRICT JSON only: {"supported":true|false,"facts":[{"text":'
+    '"<grounded fact>","source":"<source>"}],"reasoning":"<one sentence>"}.'
+)
+
+P_SIZE = (
+    "You are the Opportunity Sizer agent. Given a validated hypothesis and its "
+    "supporting facts, estimate the recoverable annual value in euros with a rough "
+    "but defensible basis. If the facts don't support a firm number, give a "
+    "conservative estimate and flag the assumption. Return STRICT JSON only: "
+    '{"metric":"€<n>M (est.)","basis":"<one sentence>"}.'
+)
+
+P_JUDGE = (
+    "You are the Judge agent. You sense-check the other agents. Given the hypothesis, "
+    "the Validator's finding, and the Sizer's estimate, decide the final verdict. Be "
+    "skeptical: reject weak evidence, logical leaps, and unsupported numbers. Verdict "
+    'is exactly one of "supported" (evidence is solid), "needs_evidence" (plausible '
+    'but unproven — needs an interview or more data), or "discarded" (contradicted or '
+    'baseless). Return STRICT JSON only: {"verdict":"supported|needs_evidence|'
+    'discarded","note":"<one sentence>"}.'
+)
+
+
+# --- LLM plumbing -----------------------------------------------------------
+
+def _llm_on() -> bool:
+    return bool(config.LLM_BASE_API_KEY and config.LLM_BASE_BASE_URL and config.LLM_BASE_MODEL)
+
+
+def _llm(system: str, user: str, max_tokens: int = 600) -> str:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=config.LLM_BASE_API_KEY, base_url=config.LLM_BASE_BASE_URL)
+    resp = client.chat.completions.create(
+        model=config.LLM_BASE_MODEL,
+        max_tokens=max_tokens,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _parse(raw: str, default):
+    """Best-effort: pull the first JSON object out of a model response."""
+    try:
+        m = re.search(r"\{.*\}", raw, re.S)
+        return json.loads(m.group(0)) if m else default
+    except Exception:
+        return default
+
+
+# --- brain reads (sync; called via run_in_executor) -------------------------
+
+def _read_brain(db_name: str) -> dict:
+    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
+        cur.execute("SELECT id, type, name FROM entities ORDER BY id;")
+        ents = cur.fetchall()
+        cur.execute("SELECT text, section, page_path, entity_id FROM chunks ORDER BY id;")
+        chunks = cur.fetchall()
+    ent_name = {i: n for (i, _t, n) in ents}
+    evidence = []
+    for text, section, page, eid in chunks:
+        who = ent_name.get(eid)
+        src = section or page or "brain"
+        evidence.append({
+            "text": " ".join((text or "").split()),
+            "source": f"{who} · {src}" if who else src,
+        })
+    return {
+        "entities": [f"{t}: {n}" for (_i, t, n) in ents],
+        "companies": [n for (_i, t, n) in ents if t == "company"],
+        "evidence": evidence,
+    }
+
+
+def _evidence_blob(evidence: list[dict], limit: int = 4000) -> str:
+    out = []
+    for e in evidence:
+        out.append(f"- ({e['source']}) {e['text']}")
+    blob = "\n".join(out)
+    return blob[:limit] if blob else "(no evidence ingested yet)"
+
+
+def _size_heuristic(idx: int, n_facts: int) -> str:
+    return f"€{0.4 + (idx % 5) * 0.3 + n_facts * 0.5:.1f}M (est.)"
+
+
+# --- agent roles (LLM with heuristic fallback) ------------------------------
+
+def _gen_hypotheses(org: str, brain: dict, objective: str) -> list[dict]:
+    if _llm_on():
+        try:
+            user = (
+                f"Organization: {org}\nObjective function: {objective}\n\n"
+                f"Entities in the brain:\n" + "\n".join(brain["entities"][:40]) +
+                f"\n\nEvidence excerpts:\n{_evidence_blob(brain['evidence'])}\n\n"
+                "Propose the hypotheses."
+            )
+            data = _parse(_llm(P_HYPO, user, 700), {})
+            hs = data.get("hypotheses") if isinstance(data, dict) else None
+            out = [
+                {"label": (h.get("label") or "").strip(), "rationale": (h.get("rationale") or "").strip()}
+                for h in (hs or []) if (h.get("label") or "").strip()
+            ]
+            if out:
+                return out[:4]
+        except Exception:
+            log.exception("hypothesis LLM failed; falling back")
+    return [
+        {"label": f"Value is leaking around {c}", "rationale": "Derived from the brain (LLM unavailable)."}
+        for c in brain["companies"]
+    ] or [{"label": f"Where is value leaking at {org}?", "rationale": ""}]
+
+
+def _plan(hypothesis: str, objective: str) -> list[str]:
+    if _llm_on():
+        try:
+            data = _parse(_llm(P_PLAN, f"Objective: {objective}\nHypothesis: {hypothesis}", 400), {})
+            steps = [s.strip() for s in (data.get("steps") or []) if isinstance(s, str) and s.strip()]
+            if steps:
+                return steps[:5]
+        except Exception:
+            log.exception("planning LLM failed; falling back")
+    return [
+        "Pull every mention of the subject from the brain.",
+        "Look for discounting, manual rework, and cost leakage.",
+        "Quantify the €-impact from whatever evidence turns up.",
+    ]
+
+
+def _validate(hypothesis: str, brain: dict) -> dict:
+    if _llm_on():
+        try:
+            user = (
+                f"Hypothesis: {hypothesis}\n\nEvidence available in the brain:\n"
+                f"{_evidence_blob(brain['evidence'])}"
+            )
+            data = _parse(_llm(P_VALID, user, 700), {})
+            if isinstance(data, dict) and "supported" in data:
+                facts = [
+                    {"text": (f.get("text") or "").strip(), "source": (f.get("source") or "brain").strip()}
+                    for f in (data.get("facts") or []) if (f.get("text") or "").strip()
+                ]
+                return {
+                    "supported": bool(data.get("supported")),
+                    "facts": facts[:4],
+                    "reasoning": (data.get("reasoning") or "").strip(),
+                }
+        except Exception:
+            log.exception("validator LLM failed; falling back")
+    # heuristic: surface up to 2 real excerpts as facts
+    facts = [{"text": e["text"][:180], "source": e["source"]} for e in brain["evidence"][:2]]
+    return {"supported": bool(facts), "facts": facts, "reasoning": "Heuristic retrieval (LLM unavailable)."}
+
+
+def _size(hypothesis: str, facts: list[dict], objective: str, idx: int) -> dict:
+    if _llm_on() and facts:
+        try:
+            fblob = "\n".join(f"- ({f['source']}) {f['text']}" for f in facts) or "(none)"
+            user = f"Objective: {objective}\nHypothesis: {hypothesis}\nSupporting facts:\n{fblob}"
+            data = _parse(_llm(P_SIZE, user, 200), {})
+            metric = (data.get("metric") or "").strip() if isinstance(data, dict) else ""
+            if metric:
+                return {"metric": metric, "basis": (data.get("basis") or "").strip()}
+        except Exception:
+            log.exception("sizer LLM failed; falling back")
+    return {"metric": _size_heuristic(idx, len(facts)), "basis": ""}
+
+
+def _judge(hypothesis: str, validation: dict, sizing: dict) -> dict:
+    if _llm_on():
+        try:
+            user = (
+                f"Hypothesis: {hypothesis}\n"
+                f"Validator: supported={validation.get('supported')}; "
+                f"reasoning={validation.get('reasoning')}; "
+                f"facts={[f['text'] for f in validation.get('facts', [])]}\n"
+                f"Sizer: {sizing.get('metric')} — {sizing.get('basis')}"
+            )
+            data = _parse(_llm(P_JUDGE, user, 200), {})
+            verdict = (data.get("verdict") or "").strip() if isinstance(data, dict) else ""
+            if verdict in ("supported", "needs_evidence", "discarded"):
+                return {"verdict": verdict, "note": (data.get("note") or "").strip()}
+        except Exception:
+            log.exception("judge LLM failed; falling back")
+    return {
+        "verdict": "supported" if validation.get("facts") else "needs_evidence",
+        "note": "",
+    }
+
+
+# --- event persistence (sync; called via run_in_executor) -------------------
 
 def _insert_run(db_name: str) -> int:
     with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
@@ -99,43 +319,6 @@ def _emit(db_name, run_id, role, kind, message, *, node_id=None,
         log.exception("swarm emit failed")
 
 
-def _companies(db_name: str):
-    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
-        cur.execute("SELECT id, name FROM entities WHERE type = 'company' ORDER BY id;")
-        return cur.fetchall()
-
-
-def _search_facts(db_name: str, entity_id: int):
-    clause = " OR ".join(["text ILIKE %s"] * len(_KEYWORDS))
-    params = [f"%{k}%" for k in _KEYWORDS]
-    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
-        cur.execute(
-            f"SELECT text, section, page_path FROM chunks "
-            f"WHERE ({clause}) ORDER BY (entity_id = %s) DESC, id LIMIT 3;",
-            params + [entity_id],
-        )
-        return cur.fetchall()
-
-
-def _entity_chunks(db_name: str, entity_id: int, limit: int = 2):
-    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT text, section, page_path FROM chunks WHERE entity_id = %s ORDER BY id LIMIT %s;",
-            (entity_id, limit),
-        )
-        return cur.fetchall()
-
-
-def _size(entity_id: int, n_facts: int) -> str:
-    base = 0.4 + (entity_id % 5) * 0.3 + n_facts * 0.5
-    return f"€{base:.1f}M (est.)"
-
-
-def _snippet(text: str) -> str:
-    s = " ".join((text or "").split())
-    return s[:177] + "…" if len(s) > 180 else s
-
-
 # --- the loop ---------------------------------------------------------------
 
 async def _loop(db_name: str, run_id: int, org: str) -> None:
@@ -147,86 +330,79 @@ async def _loop(db_name: str, run_id: int, org: str) -> None:
     async def call(fn, *a):
         return await loop.run_in_executor(None, partial(fn, *a))
 
+    objective = DEFAULT_OBJECTIVE
     try:
-        await emit("system", "log", f"Swarm started for {org}. Reading the Context Engine…")
-        await asyncio.sleep(1.2)
+        mode = "LLM agents" if _llm_on() else "heuristic agents (no LLM key)"
+        await emit("system", "log", f"Swarm started for {org} · {mode}. Reading the Context Engine…")
+        await asyncio.sleep(0.8)
 
-        companies = await call(_companies, db_name)
+        brain = await call(_read_brain, db_name)
         root = "root"
         await emit(
-            "system", "node",
-            f"Objective: find where value is leaking at {org}.",
+            "system", "node", f"Objective: find where value is leaking at {org}.",
             node_id=root, parent_id=None,
             label=f"Where is value leaking at {org}?", status="investigating",
         )
-
-        if not companies:
+        if not brain["evidence"]:
             await emit("system", "log",
-                       "No companies in the brain yet — connect more sources in the Context Engine.")
+                       "The brain is thin — connect more sources in the Context Engine for richer findings.")
 
-        for eid, name in companies:
-            nid = f"h-{eid}"
-            await emit("hypothesis", "log", f"Proposing a hypothesis around {name}.")
-            await asyncio.sleep(1.0)
+        await emit("hypothesis", "log", "Hypothesis generation reading the brain + objective function…")
+        hypotheses = await call(_gen_hypotheses, org, brain, objective)
+        await emit("hypothesis", "log", f"Proposed {len(hypotheses)} hypotheses to test.")
+
+        for idx, h in enumerate(hypotheses):
+            nid = f"h-{idx}"
+            label = h["label"]
             await emit(
-                "hypothesis", "node", f"New hypothesis: value is leaking around {name}.",
-                node_id=nid, parent_id=root,
-                label=f"Value is leaking around {name}", status="investigating",
+                "hypothesis", "node", f"New hypothesis: {label}",
+                node_id=nid, parent_id=root, label=label, status="investigating",
             )
+            if h.get("rationale"):
+                await emit("hypothesis", "log", f"Why: {h['rationale']}")
+            await asyncio.sleep(0.4)
 
-            await emit("planning", "log", f"Planning how to test the {name} hypothesis.")
-            await asyncio.sleep(0.8)
-            for step in (
-                f"Pull every mention of {name} from the brain.",
-                "Look for discounting, manual rework, and cost leakage.",
-                "Quantify the €-impact from whatever evidence turns up.",
-            ):
+            await emit("planning", "log", f"Planning how to test: {label}")
+            steps = await call(_plan, label, objective)
+            for step in steps:
                 await emit("planning", "log", f"Plan · {step}")
-                await asyncio.sleep(0.4)
+                await asyncio.sleep(0.25)
 
-            await emit("validator", "log", f"Validator gathering facts on {name} from the brain…")
-            await asyncio.sleep(0.9)
-            facts = await call(_search_facts, db_name, eid)
-            if not facts:
-                facts = await call(_entity_chunks, db_name, eid)
-            for text, section, page in facts:
-                snip = _snippet(text)
-                src = section or page or "brain"
+            await emit("validator", "log", f"Validator gathering evidence for: {label}")
+            validation = await call(_validate, label, brain)
+            for f in validation["facts"]:
                 await emit(
-                    "validator", "fact", f"Evidence for {name}: {snip}",
-                    parent_id=nid, label=snip, source=src,
+                    "validator", "fact", f"Evidence: {f['text']}",
+                    parent_id=nid, label=f["text"], source=f["source"],
                 )
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.3)
+            if validation.get("reasoning"):
+                await emit("validator", "log", f"Read: {validation['reasoning']}")
 
-            await emit("sizer", "log", f"Sizing the {name} opportunity from the evidence…")
-            await asyncio.sleep(0.7)
-            metric = _size(eid, len(facts))
+            await emit("sizer", "log", f"Sizing the opportunity: {label}")
+            sizing = await call(_size, label, validation["facts"], objective, idx)
             await emit(
-                "sizer", "node", f"Sized the {name} opportunity at {metric}.",
-                node_id=nid, parent_id=root,
-                label=f"Value is leaking around {name}", metric=metric, status="investigating",
+                "sizer", "node",
+                f"Sized at {sizing['metric']}" + (f" — {sizing['basis']}" if sizing.get("basis") else ""),
+                node_id=nid, parent_id=root, label=label,
+                metric=sizing["metric"], status="investigating",
+            )
+            await asyncio.sleep(0.4)
+
+            verdict = await call(_judge, label, validation, sizing)
+            await emit(
+                "judge", "node",
+                f"Judge: {verdict['verdict'].replace('_', ' ')}"
+                + (f" — {verdict['note']}" if verdict.get("note") else ""),
+                node_id=nid, parent_id=root, label=label,
+                metric=sizing["metric"], status=verdict["verdict"],
             )
             await asyncio.sleep(0.6)
-
-            if facts:
-                await emit(
-                    "judge", "node", f"Judge: the {name} hypothesis holds — the evidence checks out.",
-                    node_id=nid, parent_id=root,
-                    label=f"Value is leaking around {name}", metric=metric, status="supported",
-                )
-            else:
-                await emit(
-                    "judge", "node",
-                    f"Judge: {name} needs an interview — no hard evidence in the brain yet.",
-                    node_id=nid, parent_id=root,
-                    label=f"Value is leaking around {name}", metric=metric, status="needs_evidence",
-                )
-            await asyncio.sleep(0.9)
 
         await emit("system", "log", "First pass complete. Monitoring the brain for new evidence…")
         beat = 0
         while True:
-            await asyncio.sleep(9)
+            await asyncio.sleep(12)
             beat += 1
             await emit("system", "log",
                        f"Heartbeat {beat}: re-checking the Context Engine for new signals…")
