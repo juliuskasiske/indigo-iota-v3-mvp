@@ -909,10 +909,71 @@ export interface DbRows {
   offset: number;
 }
 
+// --- agent swarm ------------------------------------------------------------
+
+export interface SwarmRole {
+  key: string;
+  name: string;
+  desc: string;
+  instances: number;
+  active: number;
+}
+
+export interface SwarmStatus {
+  running: boolean;
+  run_id: number | null;
+  total: number;
+  roles: SwarmRole[];
+}
+
+export interface SwarmLogEvent {
+  id: number;
+  ts: number;
+  role: string;
+  kind: string;
+  message: string;
+  metric: string | null;
+  status: string | null;
+}
+
+export interface SwarmLog {
+  events: SwarmLogEvent[];
+  run_id: number | null;
+  running: boolean;
+}
+
+export interface SwarmFact {
+  text: string;
+  source: string | null;
+  metric: string | null;
+}
+
+export interface SwarmNode {
+  id: string;
+  label: string;
+  metric: string | null;
+  status: string | null;
+  role?: string;
+  facts: SwarmFact[];
+  children: SwarmNode[];
+}
+
+export interface SwarmTree {
+  tree: SwarmNode | null;
+  run_id: number | null;
+  running: boolean;
+}
+
 // --- endpoints --------------------------------------------------------------
 
 export const api = {
   me: () => request<Me>("/auth/me"),
+
+  swarmStatus: () => request<SwarmStatus>("/api/swarm/status"),
+  swarmLog: (since = 0) => request<SwarmLog>(`/api/swarm/log?since=${since}`),
+  swarmTree: () => request<SwarmTree>("/api/swarm/tree"),
+  swarmStart: () => request<SwarmStatus>("/api/swarm/start", { method: "POST" }),
+  swarmStop: () => request<SwarmStatus>("/api/swarm/stop", { method: "POST" }),
 
   devLogin: (slug: string, email: string) =>
     request<{ ok: boolean; org: string; role: string; email: string }>(

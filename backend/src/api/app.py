@@ -358,6 +358,49 @@ def admin_ping(user: dict = Depends(require_role("admin"))) -> dict:
     return {"ok": True, "org": user["org"], "role": user["role"]}
 
 
+# --- Agent swarm ------------------------------------------------------------
+# Start/stop a loop of agents that read the brain and investigate where value is
+# leaking; the Overview renders the live log + hypothesis tree they produce.
+
+@app.get("/api/swarm/status")
+def swarm_status(user: dict = Depends(current_user)) -> dict:
+    from src.agents import swarm
+
+    return swarm.status(_tenant_db_for(user["org_id"]))
+
+
+@app.get("/api/swarm/log")
+def swarm_log(
+    since: int = Query(0, ge=0), user: dict = Depends(current_user)
+) -> dict:
+    from src.agents import swarm
+
+    return swarm.get_log(_tenant_db_for(user["org_id"]), since=since)
+
+
+@app.get("/api/swarm/tree")
+def swarm_tree(user: dict = Depends(current_user)) -> dict:
+    from src.agents import swarm
+
+    return swarm.get_tree(_tenant_db_for(user["org_id"]))
+
+
+@app.post("/api/swarm/start")
+async def swarm_start(user: dict = Depends(require_role("admin"))) -> dict:
+    from src.agents import swarm
+
+    return await swarm.start(
+        _tenant_db_for(user["org_id"]), user.get("org") or "your workspace"
+    )
+
+
+@app.post("/api/swarm/stop")
+async def swarm_stop(user: dict = Depends(require_role("admin"))) -> dict:
+    from src.agents import swarm
+
+    return await swarm.stop(_tenant_db_for(user["org_id"]))
+
+
 def _money(value) -> str:
     """Render a Decimal cost as a stable string (never float — it's money)."""
     return str(value)

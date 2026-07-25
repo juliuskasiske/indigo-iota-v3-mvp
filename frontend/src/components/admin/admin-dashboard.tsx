@@ -579,7 +579,7 @@ export function AdminDashboard({
           {/* ---- Overview: the agent-loop hypothesis tree ---- */}
           <TabsContent value="overview" className="mt-0">
             <div key={`overview-${reloadKey}`}>
-              <OverviewPanel />
+              <OverviewPanel onAuthError={onAuthError} />
             </div>
           </TabsContent>
 
@@ -598,7 +598,7 @@ export function AdminDashboard({
 
           <TabsContent value="swarm" className="mt-0">
             <div key={`swarm-${reloadKey}`}>
-              <AgentSwarmPanel />
+              <AgentSwarmPanel onAuthError={onAuthError} />
             </div>
           </TabsContent>
 
