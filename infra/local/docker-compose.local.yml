@@ -65,7 +65,9 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
-      - "8080:80"
+      # Local override: 8080 is taken by the marketing-site vite dev server,
+      # so the MVP local preview is served on 8081 instead.
+      - "8081:80"
 
 volumes:
   pgdata_local:

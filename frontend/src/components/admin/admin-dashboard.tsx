@@ -18,10 +18,12 @@ import {
   Sparkles,
   Network,
   Files,
-  FileText,
-  ClipboardCheck,
   Wallet,
   Brain,
+  Target,
+  Mic,
+  Bot,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 import { IotaLogo } from "@/components/iota-logo";
@@ -49,13 +51,12 @@ import { ObservabilityPanel } from "@/components/admin/observability-panel";
 import { WorkspaceDangerZone } from "@/components/workspace-danger-zone";
 import { DiligencePanel } from "@/components/diligence-panel";
 import { Expander } from "@/components/ui/expander";
-import { AskBox } from "@/components/ask/ask-box";
 import { BrainGraph } from "@/components/ask/brain-graph";
 import { PagesTab } from "@/components/ask/pages-tab";
-import { DeliveryTab } from "@/components/ask/delivery-tab";
-import { DocumentsTab } from "@/components/ask/documents-tab";
-import { ConnectTab } from "@/components/ask/connect-tab";
 import { BrainPageDetail } from "@/components/ask/brain-page-detail";
+import { AlignPanel } from "@/components/steps/align-panel";
+import { OverviewPanel } from "@/components/steps/hypothesis-tree";
+import { AgentSwarmPanel, ComingSoon } from "@/components/steps/agent-swarm-panel";
 import { cn } from "@/lib/utils";
 import { api, ApiError, type Me, type BrainPage } from "@/lib/api";
 
@@ -67,69 +68,78 @@ type NavItem = {
   Icon: LucideIcon;
 };
 
-// "Home turf" — the brain itself, available to every member. Sits on TOP of the
-// sidebar, above the admin-only section.
-const HOME_NAV: NavItem[] = [
+type SubTab = { value: string; label: string };
+
+type StepStatus = "live" | "preview";
+
+type StepNav = NavItem & {
+  step: number;
+  status: StepStatus;
+  subtabs: SubTab[];
+};
+
+// "Home turf" — the five-step engagement journey. Sits on TOP of the sidebar,
+// above the admin-only section. Step 2 (Context Engine) is the live product;
+// the rest are marked "Preview" and show illustrative content so a viewer can
+// follow the whole arc, Align → Deliver. Step 2 and step 4 use the technology
+// names from the marketing site (Context Engine / Agent Swarm).
+const STEP_NAV: StepNav[] = [
   {
-    value: "ask",
-    label: "Ask",
-    title: "Ask your brain",
-    desc: "Ask anything about the people, projects, and commitments across your workspace. Answers cite the email and entity context they came from.",
-    Icon: Sparkles,
+    value: "align",
+    step: 1,
+    label: "Objectives",
+    title: "Objectives",
+    desc: "Set the objective function the agents optimize for, then add any context in your own words. This is the compass every later agent runs against.",
+    Icon: Target,
+    status: "preview",
+    // No sub-tabs — Align is a single view (priorities + context).
+    subtabs: [],
   },
   {
-    value: "delivery",
-    label: "Delivery",
-    title: "Delivery",
-    desc: "To-dos needing action in the next 24 hours, most urgent first. Delegate any to Indigo Iota to draft and refine the deliverable.",
-    Icon: ClipboardCheck,
+    value: "context",
+    step: 2,
+    label: "Context Engine",
+    title: "Context Engine",
+    desc: "Reads across everything your organization already produces, strips out who's who, and turns it into one living map your agents can reason over.",
+    Icon: Brain,
+    status: "live",
+    subtabs: [
+      { value: "sources", label: "Sources" },
+      { value: "graph", label: "Graph" },
+      { value: "pages", label: "Pages" },
+    ],
   },
   {
-    value: "graph",
-    label: "Graph",
-    title: "Knowledge graph",
-    desc: "Explore the entities and the relationships between them. Hover an edge to read the relationship.",
-    Icon: Network,
+    value: "interview",
+    step: 3,
+    label: "Interview",
+    title: "Targeted interviews",
+    desc: "The brain spots its own blind spots and requests the specific interviews that close them, then folds the answers back into the context.",
+    Icon: Mic,
+    status: "preview",
+    subtabs: [],
   },
   {
-    value: "pages",
-    label: "Pages",
-    title: "Brain pages",
-    desc: "Every page in the brain, grouped by entity type.",
-    Icon: Files,
-  },
-  {
-    value: "documents",
-    label: "Documents",
-    title: "Documents",
-    desc: "Every Google Drive file the brain has captured, with its converted Markdown — the text the agents and retrieval actually read.",
-    Icon: FileText,
-  },
-  {
-    value: "connect",
-    label: "Connect",
-    title: "Connect an assistant",
-    desc: "Link this workspace's brain to Claude or ChatGPT over MCP — read-only.",
-    Icon: Plug,
+    value: "swarm",
+    step: 4,
+    label: "Agent Swarm",
+    title: "Agent Swarm",
+    desc: "Once the context is in place, agents read your organization in parallel, cross-check what they find, and converge on the value levers worth pulling.",
+    Icon: Bot,
+    status: "preview",
+    subtabs: [],
   },
 ];
 
-// "Admin Center" — workspace administration, shown only to admins. The same
-// panels the onboarding wizard used, freely editable in steady state.
+// "Admin Center" — workspace administration, shown only to admins. Sources now
+// lives up in the Context Engine step, so it's no longer here.
 const ADMIN_NAV: NavItem[] = [
   {
-    value: "overview",
-    label: "Overview",
-    title: "Overview",
-    desc: "Credits and usage at a glance.",
+    value: "account",
+    label: "Account",
+    title: "Account",
+    desc: "Credits, usage, and mail sync at a glance.",
     Icon: LayoutDashboard,
-  },
-  {
-    value: "capture",
-    label: "Sources",
-    title: "Sources",
-    desc: "The mailboxes Indigo Iota pulls from, on-demand backfills, and connected assistants.",
-    Icon: Plug,
   },
   {
     value: "observability",
@@ -168,6 +178,24 @@ const ADMIN_NAV: NavItem[] = [
   },
 ];
 
+// "Overview" — the key tab above Home turf. The running tally of what the agent
+// loop is investigating, drawn as a fact-backed hypothesis tree.
+const OVERVIEW_NAV: NavItem = {
+  value: "overview",
+  label: "Overview",
+  title: "What the agents are investigating",
+  desc: "A live hypothesis tree that runs on a loop — branches are hypotheses, leaves are initiatives, and every step is backed by facts and sources from the brain.",
+  Icon: Radar,
+};
+
+// Default sub-tab per step (the first one). Steps with no sub-tabs are skipped.
+const DEFAULT_SUBTABS: Record<string, string> = Object.fromEntries(
+  STEP_NAV.filter((s) => s.subtabs.length > 0).map((s) => [
+    s.value,
+    s.subtabs[0].value,
+  ]),
+);
+
 export function AdminDashboard({
   me,
   onAuthError,
@@ -184,11 +212,12 @@ export function AdminDashboard({
   const isAdmin = me.role === "admin";
   const [reloadKey, setReloadKey] = useState(0);
   const [ontologyVersion, setOntologyVersion] = useState(0);
-  const [tab, setTab] = useState("ask");
+  const [tab, setTab] = useState("overview");
+  const [subtabs, setSubtabs] = useState<Record<string, string>>(DEFAULT_SUBTABS);
   const [collapsed, setCollapsed] = useState(false);
   const [reopening, setReopening] = useState(false);
 
-  // Home-turf shared state (was the old Ask page): cited-entity spotlight for the
+  // Home-turf shared state (Context Engine): cited-entity spotlight for the
   // graph, the brain pages list, and the slide-over detail panel.
   const [citedIds, setCitedIds] = useState<string[]>([]);
   const [pages, setPages] = useState<BrainPage[] | null>(null);
@@ -196,19 +225,30 @@ export function AdminDashboard({
   const [pagesError, setPagesError] = useState<string | null>(null);
   const [openPage, setOpenPage] = useState<BrainPage | null>(null);
 
-  // The Ask/Graph components report auth failures as a string reason; adapt to
-  // the dashboard's ApiError-based handler.
+  // The graph component reports auth failures as a string reason; adapt to the
+  // dashboard's ApiError-based handler.
   const askAuth = useCallback(
     (reason: string) => onAuthError(new ApiError(401, reason)),
     [onAuthError],
   );
 
   const adminNav = isAdmin ? ADMIN_NAV : [];
+  const activeStep = STEP_NAV.find((n) => n.value === tab);
   const activeNav =
-    [...HOME_NAV, ...adminNav].find((n) => n.value === tab) ?? HOME_NAV[0];
-  const inHome = HOME_NAV.some((n) => n.value === tab);
-  const sectionLabel = inHome ? "Home turf" : "Admin Center";
-  const SectionIcon = inHome ? Sparkles : ShieldCheck;
+    [OVERVIEW_NAV, ...STEP_NAV, ...adminNav].find((n) => n.value === tab) ??
+    OVERVIEW_NAV;
+  const isOverview = tab === "overview";
+  const inHome = STEP_NAV.some((n) => n.value === tab);
+  const sectionLabel = isOverview
+    ? "Overview"
+    : inHome
+      ? "Home turf"
+      : "Admin Center";
+  const SectionIcon = isOverview ? Radar : inHome ? Sparkles : ShieldCheck;
+
+  const setSub = useCallback((step: string, value: string) => {
+    setSubtabs((s) => ({ ...s, [step]: value }));
+  }, []);
 
   const loadPages = useCallback(async (): Promise<BrainPage[] | null> => {
     setPagesLoading(true);
@@ -229,12 +269,18 @@ export function AdminDashboard({
     }
   }, [onAuthError]);
 
-  // Load pages the first time the Pages tab is opened.
+  // Load pages the first time the Context Engine → Pages sub-tab is opened.
   useEffect(() => {
-    if (tab === "pages" && pages === null && !pagesLoading && !pagesError) {
+    if (
+      tab === "context" &&
+      subtabs.context === "pages" &&
+      pages === null &&
+      !pagesLoading &&
+      !pagesError
+    ) {
       void loadPages();
     }
-  }, [tab, pages, pagesLoading, pagesError, loadPages]);
+  }, [tab, subtabs.context, pages, pagesLoading, pagesError, loadPages]);
 
   // Open a brain page by path (from a graph node click), reusing the cached list.
   const openPageByPath = useCallback(
@@ -266,6 +312,43 @@ export function AdminDashboard({
       }
       setReopening(false);
     }
+  }
+
+  function renderStepTrigger(item: StepNav) {
+    return (
+      <TabsTrigger
+        key={item.value}
+        value={item.value}
+        title={collapsed ? `${item.step}. ${item.label}` : undefined}
+        className={cn(
+          "gap-2.5 rounded-lg py-2 text-white/70 hover:bg-white/10 hover:text-white",
+          "data-[state=active]:border-transparent data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:hover:bg-white/20 data-[state=active]:hover:text-white",
+          collapsed ? "justify-center px-0" : "justify-start px-3",
+        )}
+      >
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/30 text-[11px] font-semibold"
+          aria-hidden
+        >
+          {item.step}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left">{item.label}</span>
+            {item.status === "live" ? (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
+                title="Live"
+              />
+            ) : (
+              <span className="text-[9px] font-mono uppercase tracking-wider text-white/40">
+                Preview
+              </span>
+            )}
+          </>
+        )}
+      </TabsTrigger>
+    );
   }
 
   function renderTrigger(item: NavItem) {
@@ -302,6 +385,42 @@ export function AdminDashboard({
       >
         {label}
       </p>
+    );
+  }
+
+  // Body for the live Context Engine step (Sources / Graph / Pages).
+  function contextBody() {
+    const sub = subtabs.context ?? "sources";
+    if (sub === "sources") {
+      return (
+        <div className="space-y-6" key={`sources-${reloadKey}`}>
+          <SourcesNetwork onAuthError={onAuthError} />
+        </div>
+      );
+    }
+    if (sub === "graph") {
+      return (
+        <div key={`graph-${reloadKey}`}>
+          <BrainGraph
+            title={me.org}
+            highlightIds={citedIds}
+            onAuthError={askAuth}
+            onOpenPage={openPageByPath}
+            onClearHighlight={() => setCitedIds([])}
+          />
+        </div>
+      );
+    }
+    return (
+      <div key={`pages-${reloadKey}`}>
+        <PagesTab
+          pages={pages}
+          loading={pagesLoading}
+          error={pagesError}
+          onReload={loadPages}
+          onOpen={setOpenPage}
+        />
+      </div>
     );
   }
 
@@ -342,8 +461,38 @@ export function AdminDashboard({
         </div>
 
         <TabsList className="flex flex-1 flex-col items-stretch gap-1 overflow-y-auto rounded-none border-0 bg-transparent p-2 backdrop-blur-none">
-          {sectionLabelEl("Home turf", true)}
-          {HOME_NAV.map(renderTrigger)}
+          {renderTrigger(OVERVIEW_NAV)}
+          {sectionLabelEl("Home turf", false)}
+          {STEP_NAV.map((step) => (
+            <div key={step.value} className="flex flex-col">
+              {renderStepTrigger(step)}
+              {/* Sub-tabs live in the nav: they expand under the step once it's
+                  the active one, and switch the content on click. */}
+              {tab === step.value && !collapsed && (
+                <div className="mb-1 ml-[22px] mt-0.5 flex flex-col gap-0.5 border-l border-white/15 pl-2">
+                  {step.subtabs.map((st) => {
+                    const on =
+                      (subtabs[step.value] ?? step.subtabs[0].value) === st.value;
+                    return (
+                      <button
+                        key={st.value}
+                        type="button"
+                        onClick={() => setSub(step.value, st.value)}
+                        className={cn(
+                          "rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors",
+                          on
+                            ? "bg-white/15 font-medium text-white"
+                            : "text-white/55 hover:bg-white/10 hover:text-white",
+                        )}
+                      >
+                        {st.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
           {isAdmin && (
             <>
               {sectionLabelEl("Admin Center", false)}
@@ -406,72 +555,58 @@ export function AdminDashboard({
         <main className="mx-auto w-full max-w-5xl space-y-6 p-5 md:p-8">
           <div>
             <p className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-accent">
-              {me.org}
+              {activeStep ? `Step ${activeStep.step} · ${me.org}` : me.org}
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {activeNav.title}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                {activeNav.title}
+              </h1>
+              {activeStep &&
+                (activeStep.status === "live" ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Live
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-mono uppercase tracking-wider text-accent">
+                    Preview
+                  </span>
+                ))}
+            </div>
             <p className="mt-1 text-sm text-foreground-muted">{activeNav.desc}</p>
           </div>
 
-          {/* ---- Home turf ---- */}
-          <TabsContent value="ask" className="mt-0">
-            <div key={`ask-${reloadKey}`}>
-              <AskBox
-                onAuthError={askAuth}
-                onCited={setCitedIds}
-                onViewInGraph={() => setTab("graph")}
-              />
+          {/* ---- Overview: the agent-loop hypothesis tree ---- */}
+          <TabsContent value="overview" className="mt-0">
+            <div key={`overview-${reloadKey}`}>
+              <OverviewPanel />
             </div>
           </TabsContent>
 
-          <TabsContent value="delivery" className="mt-0">
-            <div key={`delivery-${reloadKey}`}>
-              <DeliveryTab onAuthError={onAuthError} />
-            </div>
+          {/* ---- Home turf: the five steps ---- */}
+          <TabsContent value="align" className="mt-0">
+            <AlignPanel />
           </TabsContent>
 
-          <TabsContent value="graph" className="mt-0">
-            <div key={`graph-${reloadKey}`}>
-              <BrainGraph
-                title={me.org}
-                highlightIds={citedIds}
-                onAuthError={askAuth}
-                onOpenPage={openPageByPath}
-                onClearHighlight={() => setCitedIds([])}
-              />
-            </div>
+          <TabsContent value="context" className="mt-0">
+            {contextBody()}
           </TabsContent>
 
-          <TabsContent value="pages" className="mt-0">
-            <div key={`pages-${reloadKey}`}>
-              <PagesTab
-                pages={pages}
-                loading={pagesLoading}
-                error={pagesError}
-                onReload={loadPages}
-                onOpen={setOpenPage}
-              />
-            </div>
+          <TabsContent value="interview" className="mt-0">
+            <ComingSoon blurb="The brain will spot its own blind spots and request the specific interviews that close them, then fold the answers back into the context." />
           </TabsContent>
 
-          <TabsContent value="documents" className="mt-0">
-            <div key={`documents-${reloadKey}`}>
-              <DocumentsTab onAuthError={onAuthError} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="connect" className="mt-0">
-            <div key={`connect-${reloadKey}`}>
-              <ConnectTab />
+          <TabsContent value="swarm" className="mt-0">
+            <div key={`swarm-${reloadKey}`}>
+              <AgentSwarmPanel />
             </div>
           </TabsContent>
 
           {/* ---- Admin Center (admins only) ---- */}
           {isAdmin && (
             <>
-              <TabsContent value="overview" className="mt-0">
-                <div className="space-y-3" key={`overview-${reloadKey}`}>
+              <TabsContent value="account" className="mt-0">
+                <div className="space-y-3" key={`account-${reloadKey}`}>
                   <Expander
                     title="Credits"
                     icon={<Wallet className="h-4 w-4 text-accent" />}
@@ -491,12 +626,6 @@ export function AdminDashboard({
                   >
                     <IngestionPanel onAuthError={onAuthError} embedded />
                   </Expander>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="capture" className="mt-0">
-                <div className="space-y-6" key={`capture-${reloadKey}`}>
-                  <SourcesNetwork onAuthError={onAuthError} />
                 </div>
               </TabsContent>
 
