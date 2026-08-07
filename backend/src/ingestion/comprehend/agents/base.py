@@ -1,6 +1,7 @@
 """The Agent base class. Holds the shared LLM-call machinery."""
 from __future__ import annotations
 import json
+import logging
 import os
 import random
 import threading
@@ -12,6 +13,8 @@ from dotenv import load_dotenv
 
 from src import events, usage
 from src.billing import metering
+
+log = logging.getLogger("iota.comprehend.agent")
 
 load_dotenv()
 
@@ -162,7 +165,17 @@ class Agent:
                         agent_name=type(self).__name__,
                         request_id=getattr(resp, "id", None),
                     )
-                return resp.choices[0].message.content
+                choice = resp.choices[0]
+                if getattr(choice, "finish_reason", None) == "length":
+                    # Truncated: the JSON is almost certainly unclosed, so this
+                    # call will fall back to its default. Say so loudly — a
+                    # silently truncated extraction is a silently emptier brain.
+                    log.warning(
+                        "%s hit max_tokens (%d) — response truncated. If %s is a "
+                        "reasoning model, its reasoning tokens are eating the budget.",
+                        type(self).__name__, max_tokens, self.model,
+                    )
+                return choice.message.content
             except _RETRYABLE_LLM_ERRORS as exc:
                 last_exc = exc
                 if attempt == _MAX_LLM_RETRIES - 1:
@@ -184,6 +197,11 @@ class Agent:
         ```-fences) by extracting the outermost {...} or [...] block before parsing.
         """
         raw = self._call(prompt, max_tokens)
+        # A reasoning model that spends its whole budget on reasoning returns
+        # content=None. Treat that as "no answer" — the same as unparseable
+        # JSON — instead of raising AttributeError and killing the email.
+        if not raw:
+            return default
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         try:
             return json.loads(cleaned)

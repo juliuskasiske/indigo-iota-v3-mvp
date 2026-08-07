@@ -18,10 +18,23 @@ LLM_BASE_MODEL: str = os.environ.get("LLM_BASE_MODEL", "")
 
 # Q&A (brain inference) runs on a deliberately stronger model than the cheap
 # default used for high-volume comprehension: answering questions over the brain
-# needs more reasoning + thoroughness than extracting one email. Override via
-# LLM_QA_MODEL; defaults to NVIDIA Nemotron 3 Ultra. Falls back to LLM_BASE_MODEL
-# only if explicitly set empty.
-LLM_QA_MODEL: str = os.environ.get("LLM_QA_MODEL", "nvidia/nemotron-3-ultra-550b-a55b")
+# needs more reasoning + thoroughness than extracting one email.
+#
+# NO hardcoded model default. A default here is invisible in the deployment's
+# env file, so a stale one silently ships: prod ran for months pointed at
+# 'nvidia/nemotron-3-ultra-550b-a55b', which LLMBase 404s, and nothing in
+# .env.prod hinted at it. Empty falls back to LLM_BASE_MODEL, which at least is
+# a model someone deliberately configured.
+LLM_QA_MODEL: str = os.environ.get("LLM_QA_MODEL", "") or LLM_BASE_MODEL
+
+# Per-role model overrides for the agent swarm, e.g. LLM_MODEL_DECOMPOSITION.
+# The roles are not equally hard: cutting an objective into a genuinely MECE set
+# and judging whether evidence carries a number are reasoning tasks, while
+# naming an initiative is not. Anything unset falls back to LLM_BASE_MODEL, so
+# this is opt-in and costs nothing until used.
+def model_for_role(role: str) -> str:
+    """The model configured for one swarm role, else the base model."""
+    return os.environ.get(f"LLM_MODEL_{role.upper()}", "") or LLM_BASE_MODEL
 
 # --- Google Drive source (shared service account) ---
 # ONE service account, created once in our GCP project, serves every customer:

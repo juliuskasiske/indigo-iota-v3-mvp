@@ -87,23 +87,26 @@ def call(
     max_tokens: int,
     org_id: int | None,
     agent_name: str,
+    model: str | None = None,
 ) -> str:
     """One metered chat completion. Raises rather than returning something unusable.
 
-    Raises ``CreditLimitExceeded`` when the workspace is out of credits (the
-    caller stops the run cleanly) and ``EmptyCompletion`` when the provider
-    returns nothing usable (the caller falls back to its heuristic).
+    ``model`` lets a role run on something other than LLM_BASE_MODEL — see
+    ``config.model_for_role``. Raises ``CreditLimitExceeded`` when the workspace
+    is out of credits (the caller stops the run cleanly) and ``EmptyCompletion``
+    when the provider returns nothing usable (the caller falls back).
     """
     # Hard credit cap BEFORE the call fires, so an out-of-credits workspace
     # cannot burn tokens through the swarm the way it could before.
     metering.enforce_credit_limit(org_id)
+    model = model or config.LLM_BASE_MODEL
 
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
             with _concurrent_calls:
                 resp = _client().chat.completions.create(
-                    model=config.LLM_BASE_MODEL,
+                    model=model,
                     max_tokens=max_tokens,
                     messages=[
                         {"role": "system", "content": system},
@@ -118,7 +121,7 @@ def call(
                 snapshot = usage.record(u.prompt_tokens, u.completion_tokens)
                 events.publish("usage_updated", snapshot)
                 metering.record_safe(
-                    model=getattr(resp, "model", None) or config.LLM_BASE_MODEL,
+                    model=getattr(resp, "model", None) or model,
                     prompt_tokens=u.prompt_tokens or 0,
                     completion_tokens=u.completion_tokens or 0,
                     org_id=org_id,
@@ -144,7 +147,7 @@ def call(
                 # the caller think the model had nothing to add.
                 raise EmptyCompletion(
                     f"{agent_name}: empty completion (finish_reason={finish!r}). "
-                    f"If {config.LLM_BASE_MODEL} is a reasoning model, its reasoning "
+                    f"If {model} is a reasoning model, its reasoning "
                     f"tokens are consuming the {max_tokens}-token budget."
                 )
             return content

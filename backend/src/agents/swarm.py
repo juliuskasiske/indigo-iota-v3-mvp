@@ -370,12 +370,21 @@ class _Budget:
 
 def _ask(prompt: str, user: str, *, role: str, org_id: int | None, budget: _Budget,
          max_tokens: int):
-    """One agent call. Returns parsed JSON, or None when unavailable/unusable."""
+    """One agent call. Returns parsed JSON, or None when unavailable/unusable.
+
+    The model is resolved per role (``LLM_MODEL_DECOMPOSITION`` etc.), falling
+    back to LLM_BASE_MODEL — the roles are not equally hard, and decomposition
+    and judgement are the two that visibly suffer on a cheap model.
+    """
     if not llm.enabled() or not budget.take(role):
         return None
     try:
         return _parse(
-            llm.call(prompt, user, max_tokens=max_tokens, org_id=org_id, agent_name=role)
+            llm.call(
+                prompt, user,
+                max_tokens=max_tokens, org_id=org_id, agent_name=role,
+                model=config.model_for_role(role),
+            )
         )
     except metering.CreditLimitExceeded:
         raise
