@@ -13,10 +13,13 @@ Role gating is done with the ``current_user`` / ``require_role`` dependencies;
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
+from typing import Literal
 from urllib.parse import quote
 
 import httpx
@@ -30,14 +33,18 @@ from fastapi.responses import (
     Response,
 )
 from mcp.server.auth.provider import construct_redirect_uri
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from src import audit, mailer, mcp_server
 from src.auth import challenge, native_auth, oidc, service, sessions
 from src.auth.passwords import WeakPasswordError
+from src.billing import metering
 from src.db import inspector
+from src.db import objective as objective_repo
 from src.onboarding.access_policy import build_access_policy_command
 from src.tenancy import provision
+
+log = logging.getLogger("iota.api")
 
 load_dotenv()
 
@@ -389,8 +396,14 @@ def swarm_tree(user: dict = Depends(current_user)) -> dict:
 async def swarm_start(user: dict = Depends(require_role("admin"))) -> dict:
     from src.agents import swarm
 
+    # org_id is passed EXPLICITLY: the loop runs in a detached asyncio task whose
+    # executor threads never inherit this request's metering contextvar, so
+    # without this every swarm call would be recorded as unattributed system
+    # usage — uncosted and outside the credit cap.
     return await swarm.start(
-        _tenant_db_for(user["org_id"]), user.get("org") or "your workspace"
+        _tenant_db_for(user["org_id"]),
+        user.get("org") or "your workspace",
+        org_id=user["org_id"],
     )
 
 
@@ -402,45 +415,167 @@ async def swarm_stop(user: dict = Depends(require_role("admin"))) -> dict:
 
 
 # --- Objective function (Objectives tab) ------------------------------------
-# The ranked balanced-scorecard levers + free-text context the agents optimize
-# for. The swarm reads this to steer hypothesis generation, sizing, and judging.
+# Not just WHICH levers matter and in what order, but in what unit the impact is
+# measured, against what number, by when, and how often it is reviewed — plus the
+# one sentence the agents compress all of that into, which roots the hypothesis
+# tree. The swarm reads this to steer decomposition, sizing and judging.
+
+class PriorityBody(BaseModel):
+    id: str
+    label: str
+    bucket: str = ""
+    rank: int = 0
+
 
 class ObjectiveBody(BaseModel):
-    priorities: list[dict] = []
+    priorities: list[PriorityBody] = []
     context: str = ""
+    impact_metric: Literal["revenue", "ebit", "ebitda", "gross_margin", "cash", "custom"] = "revenue"
+    impact_metric_label: str = ""
+    impact_type: Literal["recurring", "one_time"] = "recurring"
+    currency: Literal["EUR", "USD", "GBP", "CHF"] = "EUR"
+    baseline_amount: float | None = Field(None, ge=0)
+    target_basis: Literal["absolute", "percent", "multiple"] = "absolute"
+    target_amount: float | None = Field(None, gt=0)
+    program_start_date: date | None = None
+    program_end_date: date | None = None
+    run_rate_year: int | None = Field(None, ge=2000, le=2100)
+    reporting_cadence: Literal["weekly", "biweekly", "monthly", "quarterly"] = "monthly"
+    # Sent only when the user edited the sentence by hand; otherwise the stored
+    # headline is left alone.
+    headline: str | None = None
+
+    @model_validator(mode="after")
+    def _check(self):
+        if (
+            self.program_start_date
+            and self.program_end_date
+            and self.program_end_date <= self.program_start_date
+        ):
+            raise ValueError("program_end_date must be after program_start_date")
+        if self.target_basis == "multiple" and self.target_amount is not None and self.target_amount < 1:
+            raise ValueError("a multiple target must be at least 1")
+        # Derive the run-rate year from the deadline when it wasn't set, using
+        # the same rule the UI does.
+        if self.run_rate_year is None and self.program_end_date:
+            self.run_rate_year = self.program_end_date.year
+        return self
+
+
+def _objective_payload(obj, *, can_edit: bool) -> dict:
+    target = obj.resolved_target()
+    return {
+        "priorities": obj.priorities,
+        "context": obj.context,
+        "impact_metric": obj.impact_metric,
+        "impact_metric_label": obj.impact_metric_label,
+        "metric_label": obj.metric_label,
+        "impact_type": obj.impact_type,
+        "currency": obj.currency,
+        "baseline_amount": float(obj.baseline_amount) if obj.baseline_amount is not None else None,
+        "target_basis": obj.target_basis,
+        "target_amount": float(obj.target_amount) if obj.target_amount is not None else None,
+        "resolved_target": float(target) if target is not None else None,
+        "program_start_date": obj.program_start_date.isoformat() if obj.program_start_date else None,
+        "program_end_date": obj.program_end_date.isoformat() if obj.program_end_date else None,
+        "run_rate_year": obj.run_rate_year,
+        "reporting_cadence": obj.reporting_cadence,
+        "headline": obj.headline,
+        "headline_source": obj.headline_source,
+        "headline_stale": obj.headline_stale,
+        "readback": objective_repo.readback(obj),
+        # The server is the source of truth for whether the form is editable, so
+        # a member never gets a 403 on save that looks like a dead session.
+        "can_edit": can_edit,
+    }
 
 
 @app.get("/api/objective")
 def get_objective(user: dict = Depends(current_user)) -> dict:
     from src.db.connection import get_tenant_connection
 
-    db_name = _tenant_db_for(user["org_id"])
-    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
-        cur.execute("SELECT priorities, context FROM objective_function WHERE id = 1;")
-        row = cur.fetchone()
-    if not row:
-        return {"priorities": [], "context": ""}
-    return {"priorities": row[0] or [], "context": row[1] or ""}
+    with get_tenant_connection(_tenant_db_for(user["org_id"])) as conn:
+        obj = objective_repo.get_objective(conn)
+    return _objective_payload(obj, can_edit=user.get("role") == "admin")
 
 
 @app.put("/api/objective")
 def put_objective(
     body: ObjectiveBody, user: dict = Depends(require_role("admin"))
 ) -> dict:
-    from psycopg.types.json import Json
+    from src.db.connection import get_tenant_connection
 
+    with get_tenant_connection(_tenant_db_for(user["org_id"])) as conn:
+        current = objective_repo.get_objective(conn)
+        obj = objective_repo.Objective(
+            priorities=[p.model_dump() for p in body.priorities],
+            context=body.context,
+            impact_metric=body.impact_metric,
+            impact_metric_label=body.impact_metric_label,
+            impact_type=body.impact_type,
+            currency=body.currency,
+            baseline_amount=body.baseline_amount,
+            target_basis=body.target_basis,
+            target_amount=body.target_amount,
+            program_start_date=body.program_start_date,
+            program_end_date=body.program_end_date,
+            run_rate_year=body.run_rate_year,
+            reporting_cadence=body.reporting_cadence,
+            # Keep whatever headline is stored unless the user sent a new one.
+            headline=current.headline,
+            headline_source=current.headline_source,
+            headline_at=current.headline_at,
+        )
+        saved = objective_repo.save_objective(conn, obj)
+        if body.headline is not None and body.headline.strip() != current.headline:
+            saved = objective_repo.set_headline(conn, body.headline, source="user")
+
+    return _objective_payload(saved, can_edit=True)
+
+
+@app.post("/api/objective/headline")
+def post_objective_headline(user: dict = Depends(require_role("admin"))) -> dict:
+    """Compress the saved objective into one sentence and store it.
+
+    Generated from the SAVED row, never from an unsaved draft, so the headline
+    can never describe a program that isn't stored. On any LLM failure this
+    falls back to a deterministic restatement rather than erroring — the user
+    always ends up with a usable sentence to edit.
+    """
+    from src.agents import llm as swarm_llm
+    from src.agents import swarm
     from src.db.connection import get_tenant_connection
 
     db_name = _tenant_db_for(user["org_id"])
-    with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO objective_function (id, priorities, context, updated_at) "
-            "VALUES (1, %s, %s, now()) "
-            "ON CONFLICT (id) DO UPDATE SET "
-            "priorities = EXCLUDED.priorities, context = EXCLUDED.context, updated_at = now();",
-            (Json(body.priorities), body.context),
-        )
-    return {"ok": True, "priorities": body.priorities, "context": body.context}
+    with get_tenant_connection(db_name) as conn:
+        obj = objective_repo.get_objective(conn)
+
+    headline, error = "", None
+    if swarm_llm.enabled():
+        try:
+            budget = swarm._Budget(limit=2)
+            headline = swarm._frame(
+                objective_repo.describe(obj), user["org_id"], budget
+            )
+        except metering.CreditLimitExceeded:
+            error = "This workspace is out of credits."
+        except Exception as exc:  # noqa: BLE001 — never fail the user's click
+            log.warning("headline generation failed: %s", exc)
+            error = "The model could not be reached."
+    else:
+        error = "No language model is configured for this workspace."
+
+    source = "agent"
+    if not headline:
+        headline = objective_repo.readback(obj)
+        source = "fallback"
+
+    with get_tenant_connection(db_name) as conn:
+        saved = objective_repo.set_headline(conn, headline, source=source)
+
+    payload = _objective_payload(saved, can_edit=True)
+    payload["headline_error"] = error
+    return payload
 
 
 def _money(value) -> str:

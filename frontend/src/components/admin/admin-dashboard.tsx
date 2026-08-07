@@ -184,7 +184,7 @@ const OVERVIEW_NAV: NavItem = {
   value: "overview",
   label: "Overview",
   title: "What the agents are investigating",
-  desc: "A live hypothesis tree that runs on a loop — branches are hypotheses, leaves are initiatives, and every step is backed by facts and sources from the brain.",
+  desc: "The diagnosis as a board: your objective at the root, cut into mutually exclusive branches that each carry the reasoning behind them, down to concrete initiatives — every step backed by facts from the brain.",
   Icon: Radar,
 };
 

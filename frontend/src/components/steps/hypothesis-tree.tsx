@@ -1,151 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ChevronRight,
-  Mail,
-  FileText,
-  Package,
-  Hash,
-  Loader2,
-  Radar,
-} from "lucide-react";
-import {
-  api,
-  ApiError,
-  type SwarmTree,
-  type SwarmNode,
-  type SwarmFact,
-  type SwarmLogEvent,
-} from "@/lib/api";
+import { Loader2, Radar } from "lucide-react";
+import { api, ApiError, type SwarmTree, type SwarmLogEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { HypothesisCanvas } from "./hypothesis-canvas";
 
-// Overview — the live tally of what the agent loop is investigating. Reads the
-// hypothesis tree + event log the swarm writes to the brain; branches are
-// hypotheses, leaves are initiatives, and every node is justified by facts.
-
-function countLeaves(n: SwarmNode): number {
-  if (!n.children?.length) return 1;
-  return n.children.reduce((s, c) => s + countLeaves(c), 0);
-}
-function countFacts(n: SwarmNode): number {
-  const here = n.facts?.length ?? 0;
-  return here + (n.children?.reduce((s, c) => s + countFacts(c), 0) ?? 0);
-}
-
-function dotClass(status: string | null, depth: number): string {
-  if (status === "investigating") return "bg-amber-400";
-  if (status === "supported") return "bg-emerald-400";
-  if (status === "needs_evidence") return "bg-orange-400";
-  if (status === "discarded") return "bg-foreground-subtle/50";
-  return depth === 0 ? "bg-accent" : "bg-emerald-400";
-}
-
-function sourceIcon(source: string | null) {
-  const s = (source ?? "").toLowerCase();
-  if (s.includes("email") || s.includes("mail")) return Mail;
-  if (s.includes("order")) return Package;
-  return FileText;
-}
-
-function FactCard({ fact }: { fact: SwarmFact }) {
-  const Icon = sourceIcon(fact.source);
-  return (
-    <div className="rounded-lg border border-border bg-background-elevated/50 px-3 py-2">
-      <p className="text-[13px] leading-snug text-foreground-muted">{fact.text}</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {fact.source && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-background-soft px-2 py-0.5 text-[11px] text-foreground-subtle">
-            <Icon className="h-3 w-3" />
-            {fact.source}
-          </span>
-        )}
-        {fact.metric && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <Hash className="h-3 w-3" />
-            {fact.metric}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TreeNode({ node, depth }: { node: SwarmNode; depth: number }) {
-  const [open, setOpen] = useState(depth < 2);
-  const hasChildren = !!node.children?.length;
-  const hasFacts = !!node.facts?.length;
-  const expandable = hasChildren || hasFacts;
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => expandable && setOpen((o) => !o)}
-        className={cn(
-          "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors",
-          expandable ? "hover:bg-background-soft" : "cursor-default",
-        )}
-      >
-        <ChevronRight
-          className={cn(
-            "h-4 w-4 shrink-0 text-foreground-subtle transition-transform",
-            open && "rotate-90",
-            !expandable && "opacity-0",
-          )}
-        />
-        <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass(node.status, depth))} />
-        <span
-          className={cn(
-            "flex-1 text-sm",
-            depth === 0
-              ? "font-semibold text-foreground"
-              : depth === 1
-                ? "font-medium text-foreground"
-                : "text-foreground",
-          )}
-        >
-          {node.label}
-        </span>
-        {node.status === "investigating" && (
-          <span className="hidden items-center gap-1 text-[11px] text-amber-600 sm:inline-flex dark:text-amber-400">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            investigating
-          </span>
-        )}
-        {node.status === "needs_evidence" && (
-          <span className="hidden text-[11px] text-orange-600 sm:inline dark:text-orange-400">
-            needs interview
-          </span>
-        )}
-        {node.metric && (
-          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-            {node.metric}
-          </span>
-        )}
-      </button>
-
-      {open && expandable && (
-        <div className="ml-[11px] border-l border-border pl-4">
-          {hasFacts && (
-            <div className="my-2 space-y-1.5">
-              {node.facts.map((f, i) => (
-                <FactCard key={i} fact={f} />
-              ))}
-            </div>
-          )}
-          {node.children?.map((c) => (
-            <TreeNode key={c.id} node={c} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// Overview — what the agent loop is investigating, drawn as a board: the
+// one-sentence objective at the root, MECE branches carrying the reasoning for
+// each cut, and concrete initiatives at the leaves.
 
 const ROLE_LABEL: Record<string, string> = {
   system: "system",
-  hypothesis: "hypothesis",
+  framer: "framer",
+  decomposition: "decompose",
+  initiative: "initiative",
   planning: "planning",
   validator: "validator",
   sizer: "sizer",
@@ -159,6 +28,83 @@ function ago(ts: number): string {
   return `${Math.round(s / 3600)}h ago`;
 }
 
+function money(amount: number, currency: string): string {
+  const symbol = { EUR: "€", USD: "$", GBP: "£" }[currency] ?? `${currency} `;
+  const abs = Math.abs(amount);
+  if (abs >= 1e9) return `${symbol}${(amount / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${symbol}${(amount / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${symbol}${Math.round(amount / 1e3)}k`;
+  return `${symbol}${Math.round(amount)}`;
+}
+
+/** How much of the program's target the sized initiatives account for.
+ *
+ *  Split by verdict, because "€4M found" means something different when it is
+ *  all still unproven. One-time value is shown on its own line and never added
+ *  into a recurring run-rate goal. */
+function CoverageBar({ tree }: { tree: SwarmTree }) {
+  const cov = tree.coverage;
+  const obj = tree.objective;
+  if (!cov || !obj) return null;
+
+  const currency = obj.currency || "EUR";
+  const target = cov.target;
+  const supported = cov.by_status?.supported ?? 0;
+  const unproven = cov.sized_total - supported;
+
+  return (
+    <div className="rounded-xl border border-border bg-background-elevated/60 px-4 py-3.5">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm text-foreground">
+          <b className="font-semibold">{money(cov.sized_total, currency)}</b>
+          {target ? (
+            <>
+              {" "}of {money(target, currency)} {obj.metric_label} target
+              <span className="ml-1.5 text-foreground-subtle">
+                · {Math.round((cov.sized_total / target) * 100)}% covered
+              </span>
+            </>
+          ) : (
+            <> sized across the tree</>
+          )}
+        </p>
+        <p className="text-xs text-foreground-subtle">
+          {cov.initiatives_sized} of {cov.initiatives} initiatives sized
+        </p>
+      </div>
+
+      {target ? (
+        <div className="flex h-2 w-full overflow-hidden rounded-full bg-background-soft">
+          <div
+            className="h-full bg-success transition-[width] duration-500"
+            style={{ width: `${Math.min(100, (supported / target) * 100)}%` }}
+          />
+          <div
+            className="h-full bg-warning/70 transition-[width] duration-500"
+            style={{ width: `${Math.min(100, (unproven / target) * 100)}%` }}
+          />
+        </div>
+      ) : null}
+
+      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-foreground-subtle">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          {money(supported, currency)} supported
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning/70" />
+          {money(unproven, currency)} still unproven
+        </span>
+        {cov.one_time_total > 0 && (
+          <span>
+            {money(cov.one_time_total, currency)} one-time, counted separately
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
 function LogFeed({ events }: { events: SwarmLogEvent[] }) {
   if (!events.length) return null;
   return (
@@ -166,17 +112,12 @@ function LogFeed({ events }: { events: SwarmLogEvent[] }) {
       <p className="mb-2 px-1 text-xs font-semibold text-foreground">Activity log</p>
       <ol className="max-h-72 space-y-0.5 overflow-y-auto">
         {events.map((e) => (
-          <li
-            key={e.id}
-            className="flex items-baseline gap-2 rounded px-1.5 py-1 text-[13px]"
-          >
-            <span className="w-[72px] shrink-0 font-mono text-[10px] uppercase tracking-wide text-accent">
+          <li key={e.id} className="flex items-baseline gap-2 rounded px-1.5 py-1 text-[13px]">
+            <span className="w-[76px] shrink-0 font-mono text-[10px] uppercase tracking-wide text-accent">
               {ROLE_LABEL[e.role] ?? e.role}
             </span>
             <span className="flex-1 text-foreground-muted">{e.message}</span>
-            <span className="shrink-0 text-[11px] text-foreground-subtle">
-              {ago(e.ts)}
-            </span>
+            <span className="shrink-0 text-[11px] text-foreground-subtle">{ago(e.ts)}</span>
           </li>
         ))}
       </ol>
@@ -226,7 +167,8 @@ export function OverviewPanel({
   }, [load]);
 
   const running = tree?.running ?? false;
-  const root = tree?.tree ?? null;
+  const nodes = tree?.nodes ?? [];
+  const hasTree = nodes.length > 0;
 
   return (
     <div className="space-y-5">
@@ -240,33 +182,36 @@ export function OverviewPanel({
           <span className="text-sm text-foreground">
             {running
               ? "Agents investigating — the loop is running"
-              : root
-                ? "Swarm stopped — last investigation shown"
+              : hasTree
+                ? tree?.status === "complete"
+                  ? "Diagnosis complete — the last pass is shown"
+                  : "Swarm stopped — the last pass is shown"
                 : "Swarm idle"}
           </span>
         </div>
-        {root && (
-          <div className="flex items-center gap-4 text-xs text-foreground-subtle">
-            <span>
-              <b className="font-semibold text-foreground">{countLeaves(root)}</b>{" "}
-              initiatives
-            </span>
-            <span>
-              <b className="font-semibold text-foreground">{countFacts(root)}</b>{" "}
-              facts cited
-            </span>
-          </div>
+        {hasTree && (
+          <span className="text-xs text-foreground-subtle">
+            <b className="font-semibold text-foreground">{nodes.length}</b> nodes
+          </span>
         )}
       </div>
 
-      {err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
+      {err && <p className="text-sm text-destructive">{err}</p>}
 
-      {root ? (
+      {hasTree ? (
         <>
-          <div className="rounded-xl border border-border bg-background/40 p-3">
-            <TreeNode node={root} depth={0} />
-          </div>
+          {tree && <CoverageBar tree={tree} />}
+          <HypothesisCanvas
+            nodes={nodes}
+            objective={tree?.objective ?? null}
+            runKey={String(tree?.run_id ?? "none")}
+          />
           <LogFeed events={events} />
+          <p className="px-1 text-xs text-foreground-subtle">
+            The root is the objective. Every branch is a cut of the problem with its
+            reasoning attached, and every leaf an initiative you could start on —
+            each justified by facts pulled straight from the brain.
+          </p>
         </>
       ) : (
         !err && (
@@ -274,24 +219,13 @@ export function OverviewPanel({
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent">
               <Radar className="h-5 w-5" />
             </div>
-            <p className="text-sm font-semibold text-foreground">
-              Nothing investigated yet
-            </p>
+            <p className="text-sm font-semibold text-foreground">Nothing investigated yet</p>
             <p className="mt-1 max-w-md text-sm text-foreground-muted">
-              Start the swarm from the Agent Swarm tab. As the agents read the
-              brain, their hypotheses and the facts behind them appear here in
-              real time.
+              Set the objective on the Objectives tab, then start the swarm from the
+              Agent Swarm tab. The tree builds itself here as the agents work.
             </p>
           </div>
         )
-      )}
-
-      {root && (
-        <p className="px-1 text-xs text-foreground-subtle">
-          Every branch is a hypothesis and every leaf an initiative — each
-          justified by facts pulled straight from the brain, with the numbers
-          attached.
-        </p>
       )}
     </div>
   );

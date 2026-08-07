@@ -11,6 +11,9 @@ import {
   Clock,
   Play,
   Square,
+  Target,
+  GitBranch,
+  Rocket,
   type LucideIcon,
 } from "lucide-react";
 import { api, ApiError, type SwarmStatus } from "@/lib/api";
@@ -20,7 +23,9 @@ import { cn } from "@/lib/utils";
 // and stop with the button. Everything they do is logged in the Overview.
 
 const ICONS: Record<string, LucideIcon> = {
-  hypothesis: Lightbulb,
+  framer: Target,
+  decomposition: GitBranch,
+  initiative: Rocket,
   planning: ListChecks,
   validator: FlaskConical,
   sizer: Calculator,
@@ -154,14 +159,26 @@ export function AgentSwarmPanel({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-foreground">{r.name}</p>
-                  {running ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      {r.active} running
+                  {/* The real number of times this role spoke on the latest run.
+                      The loop is sequential, so a fixed "N running" count would
+                      have been decoration. */}
+                  {r.calls > 0 ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                        running
+                          ? "bg-success/10 text-success"
+                          : "bg-background-soft text-foreground-muted",
+                      )}
+                    >
+                      {running && (
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                      )}
+                      {r.calls} {r.calls === 1 ? "step" : "steps"}
                     </span>
                   ) : (
                     <span className="rounded-full bg-background-soft px-2.5 py-0.5 text-xs text-foreground-subtle">
-                      idle
+                      {running ? "waiting" : "idle"}
                     </span>
                   )}
                 </div>

@@ -915,8 +915,9 @@ export interface SwarmRole {
   key: string;
   name: string;
   desc: string;
-  instances: number;
-  active: number;
+  // How many times this role actually spoke on the latest run. The loop is
+  // sequential, so a fixed "instances" count would be decoration.
+  calls: number;
 }
 
 export interface SwarmStatus {
@@ -932,6 +933,8 @@ export interface SwarmLogEvent {
   role: string;
   kind: string;
   message: string;
+  // The tree node this line belongs to, so the log can deep-link to a box.
+  node_id: string | null;
   metric: string | null;
   status: string | null;
 }
@@ -942,27 +945,86 @@ export interface SwarmLog {
   running: boolean;
 }
 
-export interface SwarmFact {
+// --- the hypothesis tree ----------------------------------------------------
+
+export type NodeKind = "objective" | "branch" | "initiative";
+export type NodeStatus =
+  | "investigating"
+  | "supported"
+  | "needs_evidence"
+  | "discarded";
+
+export interface TreeEvidence {
   text: string;
   source: string | null;
-  metric: string | null;
+  page_path: string | null;
+  /** "fact" from the brain, "objective" derived from the program itself. */
+  kind: string;
 }
 
-export interface SwarmNode {
-  id: string;
+/** The five card fields a leaf carries, plus the sized value. */
+export interface InitiativeCard {
+  context: string;
+  sizing_approach: string;
+  what_must_be_true: string[];
+  next_steps: string[];
+  value_amount: number | null;
+  value_currency: string;
+  value_type: string | null;
+  value_year: number | null;
+  value_basis: string;
+  confidence: string | null;
+  feasible_by_end: boolean | null;
+}
+
+export interface TreeNode {
+  id: number;
+  parent_id: number | null;
+  kind: NodeKind;
   label: string;
-  metric: string | null;
-  status: string | null;
-  role?: string;
-  facts: SwarmFact[];
-  children: SwarmNode[];
+  /** Why this cut exists — the chain of thought behind the branch. */
+  rationale: string;
+  /** On a parent: why its children are collectively exhaustive. */
+  mece_note: string;
+  status: NodeStatus;
+  sort_order: number;
+  evidence: TreeEvidence[];
+  card: InitiativeCard | null;
+}
+
+/** The objective as it stood when the run started — frozen, so editing the
+ *  goal afterwards can't rewrite what a finished run covered. */
+export interface TreeObjective {
+  headline: string;
+  impact_metric: string;
+  metric_label: string;
+  impact_type: string;
+  currency: string;
+  resolved_target: number | null;
+  run_rate_year: number | null;
+  program_end_date: string | null;
+  reporting_cadence: string;
+}
+
+export interface TreeCoverage {
+  sized_total: number;
+  one_time_total: number;
+  initiatives: number;
+  initiatives_sized: number;
+  by_status: Record<string, number>;
+  target: number | null;
 }
 
 export interface SwarmTree {
-  tree: SwarmNode | null;
   run_id: number | null;
   running: boolean;
+  status?: string | null;
+  objective: TreeObjective | null;
+  coverage: TreeCoverage | null;
+  nodes: TreeNode[];
 }
+
+// --- the objective function -------------------------------------------------
 
 export interface ObjectivePriority {
   id: string;
@@ -971,9 +1033,50 @@ export interface ObjectivePriority {
   rank: number;
 }
 
-export interface Objective {
+export type ImpactMetric =
+  | "revenue"
+  | "ebit"
+  | "ebitda"
+  | "gross_margin"
+  | "cash"
+  | "custom";
+export type ImpactType = "recurring" | "one_time";
+export type TargetBasis = "absolute" | "percent" | "multiple";
+export type ReportingCadence = "weekly" | "biweekly" | "monthly" | "quarterly";
+
+/** What the user sends. Every field is written, so always send the whole object. */
+export interface ObjectiveInput {
   priorities: ObjectivePriority[];
   context: string;
+  impact_metric: ImpactMetric;
+  impact_metric_label: string;
+  impact_type: ImpactType;
+  currency: string;
+  baseline_amount: number | null;
+  target_basis: TargetBasis;
+  target_amount: number | null;
+  program_start_date: string | null;
+  program_end_date: string | null;
+  run_rate_year: number | null;
+  reporting_cadence: ReportingCadence;
+  /** Only send when the user edited the sentence by hand. */
+  headline?: string;
+}
+
+export interface Objective extends ObjectiveInput {
+  /** Display name of the metric ("EBIT", "revenue", or the custom label). */
+  metric_label: string;
+  /** The target as an absolute amount, whatever basis it was entered in. */
+  resolved_target: number | null;
+  headline: string;
+  headline_source: string;
+  /** True when the program changed after the sentence was written. */
+  headline_stale: boolean;
+  /** A deterministic restatement of the program, no LLM involved. */
+  readback: string;
+  /** The server decides who may edit, so a 403 never looks like a dead session. */
+  can_edit: boolean;
+  headline_error?: string | null;
 }
 
 // --- endpoints --------------------------------------------------------------
@@ -988,11 +1091,13 @@ export const api = {
   swarmStop: () => request<SwarmStatus>("/api/swarm/stop", { method: "POST" }),
 
   objective: () => request<Objective>("/api/objective"),
-  saveObjective: (body: Objective) =>
+  saveObjective: (body: ObjectiveInput) =>
     request<Objective>("/api/objective", {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  generateHeadline: () =>
+    request<Objective>("/api/objective/headline", { method: "POST" }),
 
   devLogin: (slug: string, email: string) =>
     request<{ ok: boolean; org: string; role: string; email: string }>(
