@@ -76,7 +76,7 @@ function valueBadge(node: TreeNode): string {
   if (!card?.value_amount) return "";
   const amount = money(card.value_amount, card.value_currency);
   const kind = card.value_type === "one_time" ? "one-time" : "recurring";
-  const year = card.value_year ? ` · FY${card.value_year}` : "";
+  const year = card.value_year ? `, FY${card.value_year}` : "";
   return `${amount} ${kind}${year}`;
 }
 
@@ -212,7 +212,7 @@ function NodeDetail({ node, objective }: { node: TreeNode; objective: TreeObject
             style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}
           >
             {statusLabel(node.status)}
-            {card?.confidence ? ` · ${card.confidence} confidence` : ""}
+            {card?.confidence ? `, ${card.confidence} confidence` : ""}
           </span>
         )}
       </div>
@@ -304,7 +304,7 @@ function NodeDetail({ node, objective }: { node: TreeNode; objective: TreeObject
       )}
 
       {node.evidence.length > 0 && (
-        <Section title={`Evidence · ${node.evidence.length}`}>
+        <Section title={`Evidence (${node.evidence.length})`}>
           <div className="space-y-2">
             {node.evidence.map((e, i) => {
               const Icon = e.kind === "objective" ? Target : sourceIcon(e.source);
@@ -606,7 +606,7 @@ export function HypothesisCanvas({
         </div>
 
         <p className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-foreground-subtle">
-          Drag to pan · pinch or ⌘-scroll to zoom · click a box for the detail
+          Drag to pan, pinch or ⌘-scroll to zoom, click a box for the detail
         </p>
       </div>
 

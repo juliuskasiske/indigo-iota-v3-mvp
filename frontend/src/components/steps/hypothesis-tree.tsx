@@ -61,7 +61,7 @@ function CoverageBar({ tree }: { tree: SwarmTree }) {
             <>
               {" "}of {money(target, currency)} {obj.metric_label} target
               <span className="ml-1.5 text-foreground-subtle">
-                · {Math.round((cov.sized_total / target) * 100)}% covered
+                , {Math.round((cov.sized_total / target) * 100)}% covered
               </span>
             </>
           ) : (

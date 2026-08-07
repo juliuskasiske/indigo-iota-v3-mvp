@@ -278,7 +278,7 @@ def _retrieve(db_name: str, query: str, limit: int = 8) -> list[dict]:
     out = []
     for r in rows:
         ent = r.get("entity") or {}
-        source = " · ".join(
+        source = ", ".join(
             x for x in (ent.get("name"), r.get("section") or r.get("page_path")) if x
         )
         out.append(
@@ -606,7 +606,7 @@ async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None
 
     try:
         mode = "LLM agents" if llm.enabled() else "heuristic agents (no LLM key)"
-        await emit("system", "log", f"Swarm started for {org} · {mode}. Reading the objective…")
+        await emit("system", "log", f"Swarm started for {org}, {mode}. Reading the objective…")
 
         with get_tenant_connection(db_name) as conn:
             obj = objective_repo.get_objective(conn)
@@ -685,7 +685,7 @@ async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None
                     )
                 branch_count += 1
                 await emit("decomposition", "node",
-                           f"Branch · {b['label']} — {b['rationale']}", node_id=child_id)
+                           f"Branch: {b['label']} — {b['rationale']}", node_id=child_id)
 
                 child = {
                     "id": child_id, "label": b["label"], "depth": node["depth"] + 1,
@@ -709,7 +709,7 @@ async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None
             for order, init in enumerate(proposed):
                 if initiative_count >= MAX_INITIATIVES:
                     break
-                await emit("initiative", "log", f"Initiative · {init['name']}")
+                await emit("initiative", "log", f"Initiative: {init['name']}")
 
                 # Retrieve for the initiative itself, not its branch.
                 iev = await call(_retrieve, db_name, f"{init['name']}. {init['context']}", 6)
@@ -773,7 +773,7 @@ async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None
                        f"Reached the {budget.limit}-call budget for one pass — "
                        "stopped expanding the tree.")
         await emit("system", "log",
-                   f"Pass complete · {branch_count} branches, {initiative_count} initiatives, "
+                   f"Pass complete: {branch_count} branches, {initiative_count} initiatives, "
                    f"{budget.used} agent calls.")
         await call(_mark_run, db_name, run_id, "complete")
 

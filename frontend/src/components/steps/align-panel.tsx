@@ -577,7 +577,7 @@ export function AlignPanel({
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-foreground">Ranked priorities</p>
             <span className="text-xs text-foreground-subtle">
-              {selected.length} selected · order sets the weight
+              {selected.length} selected, order sets the weight
             </span>
           </div>
 
