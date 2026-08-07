@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>5 · The flows — Indigo Iota explainer</title>
+<title>5. The flows — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html" class="active">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html" class="active">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -30,11 +32,11 @@
   line with a sentence saying what it does. Follow the file path and you can open the code and read it.</p>
 
   <div class="callout">How to read these pages: each diagram gives you the shape; the numbered list under it is the
-  authoritative play-by-play. A line reads <code>file.py · function()</code> — the file, then the exact function
+  authoritative play-by-play. A line reads <code>file.py, function()</code> — the file, then the exact function
   that runs at that step. A dashed arrow in a diagram means "the answer travels back".</div>
 
   <!-- ===================== FLOW A: SIGN IN ===================== -->
-  <h2>Flow A · Signing in</h2>
+  <h2>Flow A, Signing in</h2>
   <p>Before you can see any real data you must prove who you are. There are <strong>three</strong> ways in:
   the real <strong>Microsoft sign-in</strong> (customers on Microsoft 365); <strong>native</strong> sign-in —
   email + password + an authenticator code (customers with no Microsoft); and a <strong>dev shortcut</strong>
@@ -48,9 +50,9 @@ flowchart TB
 
   subgraph sso["Real Microsoft sign-in"]
     direction TB
-    redir["Build the Microsoft redirect<br/><code>api/app.py · login()</code>"]
+    redir["Build the Microsoft redirect<br/><code>api/app.py, login()</code>"]
     ms["You log in at Microsoft<br/>(Entra ID — outside service)"]
-    cb["Microsoft sends you back with a code<br/><code>api/app.py · callback()</code>"]
+    cb["Microsoft sends you back with a code<br/><code>api/app.py, callback()</code>"]
     verify["Verify the code + token<br/><code>auth/oidc.py</code> + <code>auth/service.py</code>"]
     redir --> ms --> cb --> verify
   end
@@ -64,52 +66,52 @@ flowchart TB
 
   subgraph dev["Laptop dev shortcut"]
     direction TB
-    devlogin["Instant fake login<br/><code>api/app.py · dev_login()</code>"]
+    devlogin["Instant fake login<br/><code>api/app.py, dev_login()</code>"]
   end
 
   branch -->|Microsoft| redir
   branch -->|native| pw
   branch -->|dev| devlogin
 
-  cookie["Issue a signed session cookie<br/><code>auth/sessions.py · issue_session()</code>"]
+  cookie["Issue a signed session cookie<br/><code>auth/sessions.py, issue_session()</code>"]
   verify --> cookie
   mfa --> cookie
   devlogin --> cookie
-  done["Browser now logged in;<br/>every later request carries the cookie<br/><code>api/app.py · me()</code> confirms it"]
+  done["Browser now logged in;<br/>every later request carries the cookie<br/><code>api/app.py, me()</code> confirms it"]
   cookie -.-> done
   </div>
   <h3>Step by step</h3>
   <ol>
     <li><code>components/admin/sign-in-card.tsx</code> — the user clicks "Sign in"; the browser navigates to the
     backend login route for the workspace slug.</li>
-    <li><code>api/app.py · login()</code> <span class="small">(GET /auth/{slug}/login)</span> — the entry point
+    <li><code>api/app.py, login()</code> <span class="small">(GET /auth/{slug}/login)</span> — the entry point
     that begins the Microsoft hand-off for this org.</li>
-    <li><code>auth/service.py · get_sso_config()</code> — loads that org's Entra client id/secret and org context
+    <li><code>auth/service.py, get_sso_config()</code> — loads that org's Entra client id/secret and org context
     from <code>sso_connections</code>.</li>
-    <li><code>auth/oidc.py · make_pkce()</code>, <code>new_state()</code>, <code>new_nonce()</code> — mint the
+    <li><code>auth/oidc.py, make_pkce()</code>, <code>new_state()</code>, <code>new_nonce()</code> — mint the
     PKCE challenge and the anti-replay state/nonce values.</li>
-    <li><code>auth/oidc.py · build_authorization_url()</code> — assemble the exact Microsoft URL the browser is
+    <li><code>auth/oidc.py, build_authorization_url()</code> — assemble the exact Microsoft URL the browser is
     sent to.</li>
-    <li><code>auth/sessions.py · issue_tx()</code> — stash the state, nonce, and PKCE verifier in a short-lived
+    <li><code>auth/sessions.py, issue_tx()</code> — stash the state, nonce, and PKCE verifier in a short-lived
     signed transaction cookie so the callback can trust the round-trip.</li>
     <li><em>Microsoft Entra ID</em> — the user authenticates on Microsoft's own pages (outside our system).</li>
-    <li><code>api/app.py · callback()</code> <span class="small">(GET /auth/callback)</span> — receives the
+    <li><code>api/app.py, callback()</code> <span class="small">(GET /auth/callback)</span> — receives the
     authorization code Microsoft redirects back with.</li>
-    <li><code>auth/sessions.py · read_tx()</code> — recovers the PKCE verifier and nonce from the transaction
+    <li><code>auth/sessions.py, read_tx()</code> — recovers the PKCE verifier and nonce from the transaction
     cookie.</li>
-    <li><code>auth/oidc.py · exchange_code()</code> — swaps the code for ID/access tokens at Microsoft's token
+    <li><code>auth/oidc.py, exchange_code()</code> — swaps the code for ID/access tokens at Microsoft's token
     endpoint.</li>
-    <li><code>auth/oidc.py · validate_id_token()</code> — verifies the token's signature against the JWKS and
+    <li><code>auth/oidc.py, validate_id_token()</code> — verifies the token's signature against the JWKS and
     checks the nonce, rejecting anything tampered or replayed.</li>
-    <li><code>auth/service.py · upsert_user_from_claims()</code> — creates or updates the <code>users</code> row
+    <li><code>auth/service.py, upsert_user_from_claims()</code> — creates or updates the <code>users</code> row
     from the verified Microsoft claims.</li>
-    <li><code>auth/service.py · resolve_role()</code> — looks up the user's role in this org via
+    <li><code>auth/service.py, resolve_role()</code> — looks up the user's role in this org via
     <code>memberships</code>, deciding what they can see.</li>
-    <li><code>auth/sessions.py · issue_session()</code> — writes the signed session cookie that is the user's
+    <li><code>auth/sessions.py, issue_session()</code> — writes the signed session cookie that is the user's
     badge from here on.</li>
-    <li><code>api/app.py · dev_login()</code> <span class="small">(POST /auth/dev-login)</span> — the laptop-only
+    <li><code>api/app.py, dev_login()</code> <span class="small">(POST /auth/dev-login)</span> — the laptop-only
     shortcut: skips Microsoft entirely and jumps straight to <code>issue_session()</code>.</li>
-    <li><code>api/app.py · me()</code> <span class="small">(GET /auth/me)</span> — on every later page load, reads
+    <li><code>api/app.py, me()</code> <span class="small">(GET /auth/me)</span> — on every later page load, reads
     the cookie back and confirms who you are.</li>
   </ol>
   <p><strong>In one sentence:</strong> the browser bounces to Microsoft (or takes the dev shortcut), the backend
@@ -132,14 +134,14 @@ flowchart TB
   </div>
 
   <!-- ===================== FLOW B: EMAIL -> KNOWLEDGE ===================== -->
-  <h2>Flow B · An email becomes knowledge <span class="small">(the whole ingestion process)</span></h2>
+  <h2>Flow B, An email becomes knowledge <span class="small">(the whole ingestion process)</span></h2>
   <p>The product's core magic, and it runs in the <em>background</em> with no one clicking. This is
   <strong>ingestion</strong> end-to-end — its four phases <strong>capture → triage → comprehend → index</strong>.
   The first two are cheap and run on a timer; the last two are the metered AI half that turns text into a graph.</p>
   <div class="mermaid">
 flowchart TB
   timer["A timer fires (scheduled)<br/><code>ingestion/scheduler.py</code>"]
-  subgraph cap["① CAPTURE + ② TRIAGE — no AI"]
+  subgraph cap["① Capture + ② Triage — no AI"]
     direction TB
     fetch["Fetch changed mail<br/><code>ingestion/capture/mail.py</code> → Graph"]
     norm["Tidy to one shape<br/><code>ingestion/capture/normalize.py</code>"]
@@ -150,12 +152,12 @@ flowchart TB
   timer --> fetch
   classify --> store
 
-  subgraph comp["③ COMPREHEND + ④ INDEX — metered AI"]
+  subgraph comp["③ Comprehend + ④ Index — metered AI"]
     direction TB
     runner["Pick up unprocessed events<br/><code>ingestion/runner.py</code>"]
     pipe["Per-entity comprehend flow<br/><code>ingestion/comprehend/pipeline.py</code>"]
-    agents["AI agents fill the page: attributes ·<br/>relationships · description · timeline<br/><code>ingestion/comprehend/agents/*.py</code>"]
-    page[("Step 1 — write the brain page (the source of truth)<br/><code>db/brain_pages.py · save_page()</code><br/>table: brain_pages")]
+    agents["AI agents fill the page: attributes,<br/>relationships, description, timeline<br/><code>ingestion/comprehend/agents/*.py</code>"]
+    page[("Step 1 — write the brain page (the source of truth)<br/><code>db/brain_pages.py, save_page()</code><br/>table: brain_pages")]
     gsync["Step 2 — derive the graph FROM the page<br/><code>ingestion/index/graph_sync.py</code>"]
     chunks["Chunk + embed the page<br/><code>ingestion/index/chunker.py</code> + <code>embeddings.py</code>"]
     runner --> pipe --> agents --> page --> gsync --> chunks
@@ -167,7 +169,7 @@ flowchart TB
   page --> pagesout
   gsync --> dbout
   chunks --> dbout
-  prov["Record who touched what<br/><code>runner.py · _record_provenance()</code><br/>table: comprehension_pages"]
+  prov["Record who touched what<br/><code>runner.py, _record_provenance()</code><br/>table: comprehension_pages"]
   page -.-> prov
   meter["Every AI call is metered<br/><code>billing/metering.py</code>"]
   agents -.-> meter
@@ -175,36 +177,36 @@ flowchart TB
 
   <h3>Step by step — ① Capture + ② Triage <span class="pill mock">no AI</span></h3>
   <ol>
-    <li><code>ingestion/scheduler.py · main()</code> — the timer loop: every <code>IOTA_SYNC_INTERVAL_SECONDS</code>
+    <li><code>ingestion/scheduler.py, main()</code> — the timer loop: every <code>IOTA_SYNC_INTERVAL_SECONDS</code>
     it sweeps each configured mailbox.</li>
-    <li><code>scheduler.py · _parse_targets()</code> — turns <code>IOTA_SYNC_TARGETS</code> into a list of
+    <li><code>scheduler.py, _parse_targets()</code> — turns <code>IOTA_SYNC_TARGETS</code> into a list of
     (slug, mailbox) pairs, skipping malformed entries.</li>
-    <li><code>scheduler.py · _make_fetcher()</code> — returns the live <code>GraphMailClient</code>, or a file
+    <li><code>scheduler.py, _make_fetcher()</code> — returns the live <code>GraphMailClient</code>, or a file
     replayer when <code>IOTA_SYNC_FROM_FILE</code> is set (offline, credential-free).</li>
-    <li><code>scheduler.py · _sync_once()</code> — one pass over one target; opens the tenant connection and never
+    <li><code>scheduler.py, _sync_once()</code> — one pass over one target; opens the tenant connection and never
     lets a single bad mailbox kill the loop.</li>
-    <li><code>ingestion/capture/mail.py · ingest_mailbox()</code> — the connector's chokepoint that runs all of
+    <li><code>ingestion/capture/mail.py, ingest_mailbox()</code> — the connector's chokepoint that runs all of
     capture + triage for one mailbox.</li>
-    <li><code>mail.py · _start_capture_run()</code> — opens a row in <code>capture_runs</code> to log this sweep.</li>
-    <li><code>mail.py · _load_delta()</code> — reads the saved Microsoft delta cursor from
+    <li><code>mail.py, _start_capture_run()</code> — opens a row in <code>capture_runs</code> to log this sweep.</li>
+    <li><code>mail.py, _load_delta()</code> — reads the saved Microsoft delta cursor from
     <code>capture_cursors</code> so only what changed is pulled.</li>
-    <li><code>ingestion/capture/graph_client.py · GraphMailClient.fetch()</code> — calls Microsoft Graph and
+    <li><code>ingestion/capture/graph_client.py, GraphMailClient.fetch()</code> — calls Microsoft Graph and
     returns the changed messages plus the next delta link.</li>
-    <li><code>ingestion/capture/normalize.py · normalize_message()</code> — flattens each Graph message into one
+    <li><code>ingestion/capture/normalize.py, normalize_message()</code> — flattens each Graph message into one
     standard shape (sender, subject, body, attachments, raw).</li>
-    <li><code>mail.py · _apply_removal()</code> — a delta tombstone: if Graph says a message was deleted upstream,
+    <li><code>mail.py, _apply_removal()</code> — a delta tombstone: if Graph says a message was deleted upstream,
     drop the matching <code>captured_events</code> row.</li>
-    <li><code>ingestion/triage/scope_store.py · get_definitions()</code> — loads this tenant's scope buckets and
+    <li><code>ingestion/triage/scope_store.py, get_definitions()</code> — loads this tenant's scope buckets and
     safety margin from <code>triage_buckets</code> / <code>triage_settings</code>.</li>
-    <li><code>ingestion/triage/classify.py · classify()</code> — scores the item against the buckets and decides
+    <li><code>ingestion/triage/classify.py, classify()</code> — scores the item against the buckets and decides
     include or exclude.</li>
-    <li><code>mail.py · _insert_captured_event()</code> — writes an INCLUDED item to <code>captured_events</code>,
+    <li><code>mail.py, _insert_captured_event()</code> — writes an INCLUDED item to <code>captured_events</code>,
     deduped on (source, external_id).</li>
-    <li><code>mail.py · _record_exclusion()</code> — writes a content-free <code>triage_exclusions</code> row for a
+    <li><code>mail.py, _record_exclusion()</code> — writes a content-free <code>triage_exclusions</code> row for a
     drop (reason + bucket only, never the text).</li>
-    <li><code>mail.py · _save_delta()</code> — persists the new delta cursor so the next sweep resumes where this
+    <li><code>mail.py, _save_delta()</code> — persists the new delta cursor so the next sweep resumes where this
     one stopped.</li>
-    <li><code>mail.py · _finish_capture_run()</code> — stamps the run's tallies (fetched/included/excluded/…) onto
+    <li><code>mail.py, _finish_capture_run()</code> — stamps the run's tallies (fetched/included/excluded/…) onto
     <code>capture_runs</code>.</li>
   </ol>
 
@@ -220,54 +222,54 @@ flowchart TB
 
   <h3>Step by step — ③ Comprehend + ④ Index <span class="pill live">metered AI</span></h3>
   <ol>
-    <li><code>ingestion/runner.py · comprehend_pending()</code> — selects unprocessed <code>captured_events</code>
+    <li><code>ingestion/runner.py, comprehend_pending()</code> — selects unprocessed <code>captured_events</code>
     (oldest first) and drives them through the pipeline one at a time.</li>
-    <li><code>runner.py · _captured_event_text()</code> — renders a stored row back into the From/Subject/body text
+    <li><code>runner.py, _captured_event_text()</code> — renders a stored row back into the From/Subject/body text
     the agents expect.</li>
-    <li><code>ingestion/comprehend/pipeline.py · ComprehendPipeline.process_text()</code> — the per-item entry: it
+    <li><code>ingestion/comprehend/pipeline.py, ComprehendPipeline.process_text()</code> — the per-item entry: it
     identifies, canonicalizes, then fans out across the entities found.</li>
-    <li><code>comprehend/agents/identifier.py · IdentifierAgent.run()</code> — reads the whole item once and lists
+    <li><code>comprehend/agents/identifier.py, IdentifierAgent.run()</code> — reads the whole item once and lists
     the people / companies / projects mentioned.</li>
-    <li><code>comprehend/agents/canonicalizer.py · CanonicalizerAgent.run()</code> — merges raw mentions ("Felix",
+    <li><code>comprehend/agents/canonicalizer.py, CanonicalizerAgent.run()</code> — merges raw mentions ("Felix",
     "Felix Kasiske") onto already-known canonical entities so duplicates don't spawn.</li>
-    <li><code>pipeline.py · _handle_entity()</code> — for each entity, creates or loads its brain page (runs in a
+    <li><code>pipeline.py, _handle_entity()</code> — for each entity, creates or loads its brain page (runs in a
     per-entity worker thread).</li>
-    <li><code>comprehend/page.py · BrainPage</code> + <code>db/brain_pages.py · load_page() / save_page()</code> —
+    <li><code>comprehend/page.py, BrainPage</code> + <code>db/brain_pages.py, load_page() / save_page()</code> —
     the entity's page (frontmatter + description + timeline), held in memory while the agents fill it, then saved
     as a JSONB row. <strong>This is the source of truth, and it is written first</strong> — everything below is
     derived from it.</li>
-    <li><code>pipeline.py · _fill_page()</code> — fans out the four LLM agents below for this one entity, then
+    <li><code>pipeline.py, _fill_page()</code> — fans out the four LLM agents below for this one entity, then
     applies their results to disjoint fields of the page.</li>
     <li><code>comprehend/agents/{person,company,project}.py</code> — the frontmatter agent pulls structured fields
     for the entity's type.</li>
-    <li><code>comprehend/agents/judgment.py · RelationshipClassifier / StatusClassifier</code> — judges the
+    <li><code>comprehend/agents/judgment.py, RelationshipClassifier / StatusClassifier</code> — judges the
     relationship (person/company) or project status — interpretation, not fact-pulling.</li>
-    <li><code>comprehend/agents/description.py · DescriptionWriterAgent / DescriptionUpdaterAgent</code> — writes a
+    <li><code>comprehend/agents/description.py, DescriptionWriterAgent / DescriptionUpdaterAgent</code> — writes a
     fresh description or merges new facts into the existing one.</li>
-    <li><code>comprehend/agents/timeline.py · TimelineAgent.run()</code> — extracts a dated timeline entry for the
+    <li><code>comprehend/agents/timeline.py, TimelineAgent.run()</code> — extracts a dated timeline entry for the
     item.</li>
-    <li><code>pipeline.py · _persist()</code> — <strong>saves the page first</strong> (the source of truth, written
+    <li><code>pipeline.py, _persist()</code> — <strong>saves the page first</strong> (the source of truth, written
     even if the next step is off), <em>then</em> derives the graph from it.</li>
-    <li><code>ingestion/index/graph_sync.py · sync_page_to_graph()</code> — turns the saved page into graph rows:
+    <li><code>ingestion/index/graph_sync.py, sync_page_to_graph()</code> — turns the saved page into graph rows:
     its own entity plus every outgoing relationship.</li>
-    <li><code>db/entities.py · resolve_entity()</code> + <code>db/relationships.py · add_relationship()</code> —
+    <li><code>db/entities.py, resolve_entity()</code> + <code>db/relationships.py, add_relationship()</code> —
     the actual writes to <code>entities</code> and <code>relationships</code> (idempotent: a page's old
     relationships are deleted first).</li>
-    <li><code>comprehend/canonicalize.py · canonicalize_or_keep()</code> — collapses a free-text reference
+    <li><code>comprehend/canonicalize.py, canonicalize_or_keep()</code> — collapses a free-text reference
     ("RPX Optimization GmbH") onto the canonical entity before the relationship is written.</li>
-    <li><code>graph_sync.py · _sync_chunks()</code> — (re)builds this page's searchable passages.</li>
-    <li><code>index/chunker.py · chunk_page()</code> + <code>index/embeddings.py · embed()</code> — splits the page
+    <li><code>graph_sync.py, _sync_chunks()</code> — (re)builds this page's searchable passages.</li>
+    <li><code>index/chunker.py, chunk_page()</code> + <code>index/embeddings.py, embed()</code> — splits the page
     into sections and computes a local meaning-vector for each (fastembed, free).</li>
-    <li><code>db/chunks.py · insert_chunks()</code> — writes the passages + vectors + keyword index to
+    <li><code>db/chunks.py, insert_chunks()</code> — writes the passages + vectors + keyword index to
     <code>chunks</code>.</li>
-    <li><code>runner.py · _record_metadata()</code> — writes the <code>comprehension_log</code> receipt: entities
+    <li><code>runner.py, _record_metadata()</code> — writes the <code>comprehension_log</code> receipt: entities
     found/created/updated and the measured token + call cost for this item.</li>
-    <li><code>runner.py · _record_provenance()</code> — records which brain pages this event created/updated
+    <li><code>runner.py, _record_provenance()</code> — records which brain pages this event created/updated
     (<code>comprehension_pages</code> — the source-of-truth link, written even if graph sync was off), plus the
     derived entities and relationships it touched.</li>
-    <li><code>runner.py · _mark_processed()</code> — stamps <code>captured_events.processed_at</code> so the item
+    <li><code>runner.py, _mark_processed()</code> — stamps <code>captured_events.processed_at</code> so the item
     is never comprehended twice.</li>
-    <li><code>comprehend/agents/base.py · Agent._call()</code> → <code>billing/metering.py ·
+    <li><code>comprehend/agents/base.py, Agent._call()</code> → <code>billing/metering.py,
     enforce_credit_limit()</code> + <code>record_safe()</code> — every agent call first checks the org still has
     credits (stopping the batch cleanly if not), then records the call's cost.</li>
   </ol>
@@ -277,23 +279,23 @@ flowchart TB
   every call — pausing cleanly if credits run out.</p>
 
   <!-- ===================== FLOW C: ASK ===================== -->
-  <h2>Flow C · Asking a question (the live <em>Ask</em> page)</h2>
+  <h2>Flow C, Asking a question (the live <em>Ask</em> page)</h2>
   <p>The journey behind the cited answer on <a href="04-frontend-pages.html">the Ask page</a>. It's "RAG":
   <em>retrieve</em> the relevant brain pieces first, then ask the AI to write an answer using only those, with
   citations.</p>
   <div class="mermaid">
 flowchart TB
   type["You type a question and hit ask<br/><code>app/ask/page.tsx</code>"]
-  apicall["Send it to the backend<br/><code>lib/api.ts · ask()</code>"]
-  route["Route + tenant scope + billing context<br/><code>api/app.py · qa_ask()</code>"]
+  apicall["Send it to the backend<br/><code>lib/api.ts, ask()</code>"]
+  route["Route + tenant scope + billing context<br/><code>api/app.py, qa_ask()</code>"]
   type --> apicall --> route
 
-  qa["Orchestrate the answer<br/><code>qa.py · ask()</code>"]
-  search["Hybrid retrieve top chunks<br/><code>db/chunks.py · hybrid_search()</code>"]
-  expand["Pull in connected entities<br/><code>qa.py · _expand_via_graph()</code>"]
+  qa["Orchestrate the answer<br/><code>qa.py, ask()</code>"]
+  search["Hybrid retrieve top chunks<br/><code>db/chunks.py, hybrid_search()</code>"]
+  expand["Pull in connected entities<br/><code>qa.py, _expand_via_graph()</code>"]
   route --> qa --> search --> expand
 
-  llm["Write a cited answer<br/><code>qa.py · AnswerAgent.run()</code> → LLMBase (EU)"]
+  llm["Write a cited answer<br/><code>qa.py, AnswerAgent.run()</code> → LLMBase (EU)"]
   meter["Meter the token cost<br/><code>billing/metering.py</code>"]
   saveq[("Log the question + answer<br/>table: questions")]
   expand --> llm --> meter --> saveq
@@ -306,24 +308,24 @@ flowchart TB
   <h3>Step by step</h3>
   <ol>
     <li><code>app/ask/page.tsx</code> — the user types a question and submits.</li>
-    <li><code>lib/api.ts · ask()</code> — POSTs the question to the backend with the session cookie.</li>
-    <li><code>api/app.py · qa_ask()</code> <span class="small">(POST /api/qa/ask)</span> — resolves which tenant
+    <li><code>lib/api.ts, ask()</code> — POSTs the question to the backend with the session cookie.</li>
+    <li><code>api/app.py, qa_ask()</code> <span class="small">(POST /api/qa/ask)</span> — resolves which tenant
     brain to open and sets the billing context for the caller's org.</li>
-    <li><code>billing/metering.py · set_current_org()</code> — attributes every LLM call in this request to the
+    <li><code>billing/metering.py, set_current_org()</code> — attributes every LLM call in this request to the
     caller's org, so the right workspace is billed and credit-checked.</li>
-    <li><code>qa.py · ask()</code> — the RAG orchestrator that runs retrieval then synthesis.</li>
-    <li><code>index/embeddings.py · embed_one()</code> — turns the question into a meaning-vector locally
+    <li><code>qa.py, ask()</code> — the RAG orchestrator that runs retrieval then synthesis.</li>
+    <li><code>index/embeddings.py, embed_one()</code> — turns the question into a meaning-vector locally
     (no AI spend).</li>
-    <li><code>db/chunks.py · hybrid_search()</code> — finds the top-K chunks by combined vector + keyword score.</li>
-    <li><code>qa.py · _expand_via_graph()</code> — walks one hop out over <code>relationships</code> from the
+    <li><code>db/chunks.py, hybrid_search()</code> — finds the top-K chunks by combined vector + keyword score.</li>
+    <li><code>qa.py, _expand_via_graph()</code> — walks one hop out over <code>relationships</code> from the
     matched entities and pulls each neighbor's description chunk as extra context.</li>
-    <li><code>qa.py · _merge_sources()</code> — assembles the citable source list (vector hits first, graph
+    <li><code>qa.py, _merge_sources()</code> — assembles the citable source list (vector hits first, graph
     neighbors appended, de-duplicated).</li>
-    <li><code>qa.py · AnswerAgent.run()</code> — sends question + sources to the EU-hosted model, instructed to
+    <li><code>qa.py, AnswerAgent.run()</code> — sends question + sources to the EU-hosted model, instructed to
     answer using <em>only</em> those and to cite each fact with [N] <span class="small">(request_kind = qa)</span>.</li>
-    <li><code>agents/base.py · Agent._call()</code> → <code>billing/metering.py</code> — credit-checks then meters
+    <li><code>agents/base.py, Agent._call()</code> → <code>billing/metering.py</code> — credit-checks then meters
     the synthesis tokens.</li>
-    <li><code>db/questions.py · save_question()</code> — logs the question, answer, and frozen citations to
+    <li><code>db/questions.py, save_question()</code> — logs the question, answer, and frozen citations to
     <code>questions</code> so it can be replayed without re-paying.</li>
     <li><code>lib/api.ts</code> → <code>app/ask/page.tsx</code> — the answer + sources travel back and render as
     prose with numbered citations.</li>
@@ -333,18 +335,18 @@ flowchart TB
   cost is metered, the exchange is logged, and the answer returns with its sources.</p>
 
   <!-- ===================== FLOW D: SEED ===================== -->
-  <h2>Flow D · Filling a brain from a website (the demo seeder)</h2>
+  <h2>Flow D, Filling a brain from a website (the demo seeder)</h2>
   <p>To make a believable demo without a real mailbox, the seeder reads a public website and runs it through the
   <em>same</em> comprehend pipeline as real email — skipping only capture + triage, since there's no mailbox to
   sweep. That's how the Acme demo tenant got its data.</p>
   <div class="mermaid">
 flowchart TB
-  run["Run the seeder<br/><code>seed/website.py · seed_from_website()</code>"]
-  ci["Scrape brand identity (logo/colours/font)<br/><code>seed/ci.py · extract_ci()</code>"]
-  crawl["Crawl homepage + about/team pages<br/><code>seed/website.py · _crawl()</code>"]
-  anchor["Pre-create the company brain page<br/><code>seed/website.py · _seed_company_page()</code>"]
+  run["Run the seeder<br/><code>seed/website.py, seed_from_website()</code>"]
+  ci["Scrape brand identity (logo/colours/font)<br/><code>seed/ci.py, extract_ci()</code>"]
+  crawl["Crawl homepage + about/team pages<br/><code>seed/website.py, _crawl()</code>"]
+  anchor["Pre-create the company brain page<br/><code>seed/website.py, _seed_company_page()</code>"]
   run --> ci --> crawl --> anchor
-  pipe["Feed each page through the SAME pipeline<br/><code>ingestion/comprehend/pipeline.py · process_text()</code>"]
+  pipe["Feed each page through the SAME pipeline<br/><code>ingestion/comprehend/pipeline.py, process_text()</code>"]
   anchor --> pipe
   dbout[("Brain pages, entities, relationships, chunks<br/>land in the tenant DB")]
   pipe --> dbout
@@ -353,18 +355,18 @@ flowchart TB
   </div>
   <h3>Step by step</h3>
   <ol>
-    <li><code>seed/website.py · seed_from_website()</code> — the CLI entry: extract brand identity, then seed the
+    <li><code>seed/website.py, seed_from_website()</code> — the CLI entry: extract brand identity, then seed the
     graph in one call.</li>
-    <li><code>seed/ci.py · extract_ci()</code> — scrapes the site's <em>corporate identity</em> (logo, brand
+    <li><code>seed/ci.py, extract_ci()</code> — scrapes the site's <em>corporate identity</em> (logo, brand
     colour, font) so the demo dashboard can restyle itself — a distinct job from the email→brain pipeline.</li>
-    <li><code>seed/website.py · seed_with_ci()</code> — drives the seeding using that pre-extracted identity.</li>
-    <li><code>seed/website.py · _seed_company_page()</code> — pre-creates the target company's brain page with the
+    <li><code>seed/website.py, seed_with_ci()</code> — drives the seeding using that pre-extracted identity.</li>
+    <li><code>seed/website.py, _seed_company_page()</code> — pre-creates the target company's brain page with the
     user-supplied canonical name, so later person→company references canonicalize onto it cleanly.</li>
-    <li><code>seed/website.py · _crawl()</code> — fetches the homepage plus a few relevant same-domain pages
+    <li><code>seed/website.py, _crawl()</code> — fetches the homepage plus a few relevant same-domain pages
     (about / team / leadership), de-duplicated by URL.</li>
-    <li><code>seed/website.py · _page_text()</code> — strips nav/script/footer and returns the readable text of
+    <li><code>seed/website.py, _page_text()</code> — strips nav/script/footer and returns the readable text of
     each page.</li>
-    <li><code>ingestion/comprehend/pipeline.py · ComprehendPipeline.process_text()</code> — the <em>exact same</em>
+    <li><code>ingestion/comprehend/pipeline.py, ComprehendPipeline.process_text()</code> — the <em>exact same</em>
     per-entity comprehend flow Flow B uses, run on each page's text with today's date.</li>
     <li><code>tenancy/provision.py</code> — ensures the tenant and its brain DB exist before any write (when
     seeding a fresh tenant).</li>
@@ -376,7 +378,7 @@ flowchart TB
   pipeline works and giving the demo something to talk about.</p>
 
   <!-- ===================== FLOW E: CREDITS ===================== -->
-  <h2>Flow E · Credits &amp; billing (money in, money out)</h2>
+  <h2>Flow E, Credits &amp; billing (money in, money out)</h2>
   <p>Two opposite movements share one ledger. <strong>Money in:</strong> an admin adds credits. <strong>Money
   out:</strong> every AI call deducts its metered cost. A hard check pauses AI work if the balance is exhausted,
   so spend can never overshoot by more than one in-flight call.</p>
@@ -385,16 +387,16 @@ flowchart TB
   subgraph in["Money in (admin tops up)"]
     direction TB
     add["Admin clicks 'Add credits'<br/><code>components/admin/credits-panel.tsx</code>"]
-    addapi["<code>lib/api.ts · addCredits()</code>"]
-    addroute["<code>api/app.py · admin_add_credits()</code>"]
-    grant["Record the grant<br/><code>billing/metering.py · grant_credits()</code>"]
+    addapi["<code>lib/api.ts, addCredits()</code>"]
+    addroute["<code>api/app.py, admin_add_credits()</code>"]
+    grant["Record the grant<br/><code>billing/metering.py, grant_credits()</code>"]
     add --> addapi --> addroute --> grant
   end
 
   subgraph out["Money out (every AI call)"]
     direction TB
-    aicall["Any AI call (comprehend or Q&A)<br/><code>agents/base.py · Agent._call()</code>"]
-    rec["Record usage at a frozen price<br/><code>billing/metering.py · record_llm_usage()</code>"]
+    aicall["Any AI call (comprehend or Q&A)<br/><code>agents/base.py, Agent._call()</code>"]
+    rec["Record usage at a frozen price<br/><code>billing/metering.py, record_llm_usage()</code>"]
     aicall --> rec
   end
 
@@ -402,7 +404,7 @@ flowchart TB
   grant --> ledger
   rec --> ledger
 
-  check["Before more AI work: budget left?<br/><code>billing/metering.py · enforce_credit_limit()</code>"]
+  check["Before more AI work: budget left?<br/><code>billing/metering.py, enforce_credit_limit()</code>"]
   ledger --> check
   pause["If spent ≥ granted → raise CreditLimitExceeded → pause"]
   check -->|exhausted| pause
@@ -413,33 +415,208 @@ flowchart TB
   <h3>Step by step</h3>
   <ol>
     <li><code>components/admin/credits-panel.tsx</code> — an admin enters an amount and clicks "Add credits".</li>
-    <li><code>lib/api.ts · addCredits()</code> — POSTs the (customer-facing) amount to the backend.</li>
-    <li><code>api/app.py · admin_add_credits()</code> <span class="small">(POST /api/admin/credits/add)</span> —
+    <li><code>lib/api.ts, addCredits()</code> — POSTs the (customer-facing) amount to the backend.</li>
+    <li><code>api/app.py, admin_add_credits()</code> <span class="small">(POST /api/admin/credits/add)</span> —
     the admin-only route; divides the customer figure back to raw units before storing.</li>
-    <li><code>billing/metering.py · grant_credits()</code> — appends a <code>credit_entries</code> row
+    <li><code>billing/metering.py, grant_credits()</code> — appends a <code>credit_entries</code> row
     (kind grant/setup/adjustment).</li>
-    <li><code>agents/base.py · Agent._call()</code> — the single place every LLM call goes through, for both
+    <li><code>agents/base.py, Agent._call()</code> — the single place every LLM call goes through, for both
     comprehend and Q&A.</li>
-    <li><code>billing/metering.py · enforce_credit_limit()</code> — called <em>before</em> the call fires; raises
+    <li><code>billing/metering.py, enforce_credit_limit()</code> — called <em>before</em> the call fires; raises
     <code>CreditLimitExceeded</code> if projected spend ≥ granted credits, so a runaway job is paused.</li>
-    <li><code>billing/metering.py · _ensure_prices_synced()</code> — picks up any edits to
+    <li><code>billing/metering.py, _ensure_prices_synced()</code> — picks up any edits to
     <code>prices.yaml</code> into the dated price history before costing.</li>
-    <li><code>billing/metering.py · price_at()</code> — finds the price <em>effective at this call's instant</em>
+    <li><code>billing/metering.py, price_at()</code> — finds the price <em>effective at this call's instant</em>
     (the greatest <code>effective_from</code> not after now).</li>
-    <li><code>billing/metering.py · record_llm_usage()</code> — computes input/output/total cost with exact decimal
+    <li><code>billing/metering.py, record_llm_usage()</code> — computes input/output/total cost with exact decimal
     arithmetic and writes one immutable <code>llm_usage_events</code> row with the price frozen in.</li>
-    <li><code>billing/metering.py · record_safe()</code> — the wrapper agents actually call; it never raises, so a
+    <li><code>billing/metering.py, record_safe()</code> — the wrapper agents actually call; it never raises, so a
     metering hiccup can't break an LLM call.</li>
     <li><code>org_credit_balance</code> <span class="small">(SQL view)</span> — granted minus spent, computed on
     demand; the single source of truth for the live balance.</li>
-    <li><code>billing/metering.py · to_customer_facing()</code> — multiplies raw cost by the markup at the API
+    <li><code>billing/metering.py, to_customer_facing()</code> — multiplies raw cost by the markup at the API
     boundary, so a customer never sees our true cost or which model ran.</li>
-    <li><code>components/admin/usage-panel.tsx</code> via <code>lib/api.ts · usage()</code> / <code>credits()</code>
+    <li><code>components/admin/usage-panel.tsx</code> via <code>lib/api.ts, usage()</code> / <code>credits()</code>
     — reads the same ledger to draw the balance and spend chart.</li>
   </ol>
   <p><strong>In one sentence:</strong> top-ups and AI-call costs both write to one control-plane ledger; before any
   AI work the system checks that ledger and pauses if prepaid credits are used up — and the Admin page reads the
   same ledger, marked up, to show the balance and spend chart.</p>
+
+  <!-- ===================== FLOW F: DIAGNOSIS ===================== -->
+  <h2>Flow F, An objective becomes a diagnosis <span class="small">(the whole run)</span></h2>
+  <p>This is the newest journey and the one the diagnosis layer exists for. It starts with a person pressing
+  Start and ends with a board full of initiatives, each carrying a number and the facts behind it.</p>
+  <p>Before reading the diagram, hold three things in mind, because they explain most of the shape.</p>
+  <ul>
+    <li><strong>It is a sequence, not a crowd.</strong> The word "swarm" is in the product name, but the agents
+    run one after another. Each one is handed what the previous one produced.</li>
+    <li><strong>It writes as it goes.</strong> Each box and each field is saved the moment it exists, which is
+    why the board fills in while you watch, and why a run that dies halfway still leaves what it finished.</li>
+    <li><strong>Every AI call is counted first.</strong> The credit check happens before the call, not after, so
+    a workspace can never overshoot its prepaid balance.</li>
+  </ul>
+  <div class="mermaid">
+flowchart TB
+  press["Somebody presses Start<br/><code>steps/agent-swarm-panel.tsx</code>"]
+  route["Open a run<br/><code>api/app.py, swarm_start()</code> → <code>agents/swarm.py, start()</code>"]
+  snap[("Freeze the objective onto the run<br/>swarm_runs.objective_snapshot")]
+  press --> route --> snap
+
+  frame["Framer: compress the program into one sentence<br/><code>swarm.py, _frame()</code>"]
+  root[("Write the root box<br/>hypothesis_nodes, kind=objective")]
+  snap --> frame --> root
+
+  dec["Decomposition: split into MECE branches<br/><code>swarm.py, _decompose()</code>"]
+  ret["Fetch facts for this branch<br/><code>swarm.py, _retrieve()</code> → <code>db/chunks.py, hybrid_search()</code>"]
+  branch[("Write each branch + its evidence")]
+  root --> dec
+  dec -.->|"asks for facts first"| ret
+  ret --> dec
+  dec --> branch
+  branch -->|"depth < 2, split again"| dec
+
+  init["Initiative: 2 to 3 concrete things to do<br/><code>swarm.py, _initiatives()</code>"]
+  branch -->|"leaf branches"| init
+
+  subgraph card["Per initiative, in order — swarm.py, _build_initiative()"]
+    direction TB
+    val["Validator: which facts actually support this"]
+    plan["Planning: what must be true + next steps"]
+    size["Sizer: what it is worth, as a number"]
+    judge["Judge: verdict + confidence"]
+    val --> plan --> size --> judge
+  end
+  init --> val
+  judge --> save[("Card fields written as each agent finishes<br/>initiative_cards")]
+
+  roll["Total the values against the target<br/><code>swarm.py, _roll_up()</code>"]
+  save --> roll
+  ui["The board fills in, polled every few seconds<br/><code>GET /api/swarm/tree</code>"]
+  roll -.-> ui
+  </div>
+  <h3>Step by step</h3>
+  <ol>
+    <li><code>components/steps/agent-swarm-panel.tsx</code> — a person presses Start.</li>
+    <li><code>api/app.py, swarm_start()</code> <span class="small">(POST /api/swarm/start)</span> — resolves
+    which customer database to open and, importantly, looks up the org id <em>here</em> and passes it in by
+    hand. The usual trick of stashing it in ambient request state does not survive into a background task, so
+    it is threaded explicitly instead. Without this, a run's spend would be recorded against nobody.</li>
+    <li><code>agents/swarm.py, start()</code> — creates the <code>swarm_runs</code> row, copies the current
+    objective into <code>objective_snapshot</code>, and launches the loop in the background. The web request
+    returns immediately; nobody is left waiting on a page.</li>
+    <li><code>db/objective.py, get_objective()</code> then <code>describe()</code> — reads the program and turns
+    it into the brief every agent is given.</li>
+    <li><code>swarm.py, _frame()</code> — the <strong>Framer</strong> compresses the program into one sentence,
+    unless a person already wrote or approved one, in which case theirs is used unchanged.</li>
+    <li><code>db/hypothesis.py, add_node()</code> — writes the root box. Its evidence is the program itself, so
+    even the root can be opened and shown to have come from somewhere.</li>
+    <li><code>swarm.py, _decompose()</code> — the <strong>Decomposition</strong> agent splits a box into
+    branches that must not overlap and must together cover the whole of it, and writes down both why each
+    branch is worth looking at and why the set is exhaustive. This repeats one level down, widest-first.</li>
+    <li><code>swarm.py, _retrieve()</code> → <code>db/chunks.py, hybrid_search()</code> — before any agent
+    judges anything it is handed real passages from the customer's own memory, found by the box's own wording.
+    Each box gets facts about <em>itself</em>. An earlier version gave every box the same opening few thousand
+    characters of the brain, which is the difference between research and decoration.</li>
+    <li><code>swarm.py, _initiatives()</code> — the <strong>Initiative</strong> agent turns each bottom branch
+    into two or three named, concrete things a team could start on.</li>
+    <li><code>swarm.py, _validate()</code> — the <strong>Validator</strong> says which retrieved facts actually
+    support the initiative, and those facts are attached to it.</li>
+    <li><code>swarm.py, _plan()</code> — <strong>Planning</strong> writes what would have to be true for this to
+    be worth doing, and what somebody could do about it this week.</li>
+    <li><code>swarm.py, _size()</code> — the <strong>Sizer</strong> puts a value on it, in the objective's own
+    unit and year, as a number rather than a phrase, plus one sentence defending the arithmetic and a judgement
+    on whether it could realistically land before the deadline.</li>
+    <li><code>swarm.py, _judge()</code> — the <strong>Judge</strong> reads all of the above and returns a
+    verdict (supported, or needs more evidence) and a confidence.</li>
+    <li><code>agents/llm.py, call()</code> — every one of those steps goes through here, and every time it
+    checks the credit balance first, then records what the call cost against the workspace, tagged
+    <code>swarm</code>. If the credits run out, the run stops cleanly and says so, rather than failing
+    mysteriously.</li>
+    <li><code>swarm.py, _roll_up()</code> — totals what the initiatives are worth against the target, keeping
+    recurring and one-off value apart, and never mixing the two into one number.</li>
+    <li><code>GET /api/swarm/tree</code> → <code>steps/hypothesis-canvas.tsx</code> — the browser asks for the
+    tree every few seconds and redraws the board.</li>
+  </ol>
+  <p><strong>In one sentence:</strong> the objective is compressed into a sentence, split into
+  non-overlapping branches that each pull their own facts out of the brain, each bottom branch becomes concrete
+  initiatives, and four agents in turn check, plan, size and judge each one — with every AI call credit-checked
+  before it fires and every result written down the moment it exists.</p>
+
+  <h3>How the cost is kept from running away</h3>
+  <p>A tree that splits four ways, twice, with three initiatives each and five agent calls apiece would be
+  hundreds of AI calls. So the run is bounded twice over, deliberately, in
+  <code>agents/swarm.py</code>:</p>
+  <table>
+    <tr><th>Limit</th><th>Value</th><th>What it stops</th></tr>
+    <tr><td>Branch layers deep</td><td>2</td><td>A tree that keeps splitting forever</td></tr>
+    <tr><td>Branches per split</td><td>4</td><td>A split so fine that none of the branches means anything</td></tr>
+    <tr><td>Branch boxes in total</td><td>8</td><td>Width, once depth is capped</td></tr>
+    <tr><td>Bottom branches that get initiatives</td><td>5</td><td>Spreading the initiative budget too thin</td></tr>
+    <tr><td>Initiatives per branch</td><td>3</td><td>Padding out a thin branch</td></tr>
+    <tr><td>Initiatives in total</td><td>10</td><td>A board too big to read</td></tr>
+    <tr><td>AI calls in one run</td><td>55</td><td>Everything else, as a backstop</td></tr>
+    <tr><td>AI calls per review (Flow G)</td><td>25</td><td>A single objection costing as much as a whole run</td></tr>
+  </table>
+  <p>The first five limits shape the answer; the sixth is the seatbelt. If the shaping limits are ever wrong
+  the last one still stops the bill, and the run finishes with less rather than costing more.</p>
+
+  <!-- ===================== FLOW G: REVIEW ===================== -->
+  <h2>Flow G, Disagreeing with a box</h2>
+  <p>The diagnosis is meant to be argued with, so this flow matters as much as the one above. There are two
+  ways to push back, and the difference between them is not cosmetic.</p>
+  <table>
+    <tr><th></th><th>Discard</th><th>Feedback</th></tr>
+    <tr><td>What you mean</td><td>"This is wrong."</td><td>"This is roughly right, but…"</td></tr>
+    <tr><td>What happens to the box</td><td>Marked discarded, and kept</td><td>Rewritten in place</td></tr>
+    <tr><td>What happens below it</td><td>Everything under it is marked discarded too</td><td>Rebuilt with your note in hand</td></tr>
+    <tr><td>What you get back</td><td>A fresh attempt beside it, told what you discarded and why</td><td>The same box, improved</td></tr>
+  </table>
+  <p>Discarding keeps the old box because a rejected line of reasoning is itself a result. Someone reading the
+  board later should be able to see that the price angle was considered and thrown out, and why. Feedback
+  deletes what was below instead, because the reviewer is steering rather than refusing, and leaving every
+  superseded draft on the wall would bury the board.</p>
+  <div class="mermaid">
+flowchart TB
+  click["You open a box and write a reason<br/><code>steps/hypothesis-canvas.tsx</code>"]
+  api["<code>POST /api/swarm/nodes/{id}/discard</code><br/>or <code>/feedback</code>"]
+  rec[("Record the review, status=pending<br/>node_interventions")]
+  click --> api --> rec
+
+  mark["Discard: mark the box and everything under it<br/><code>db/hypothesis.py, discard_subtree()</code>"]
+  rev["Feedback: rewrite the box<br/><code>swarm.py, _revise()</code>"]
+  rec -->|discard| mark
+  rec -->|feedback| rev
+
+  regen["Rebuild that part of the tree, with your words in the prompt<br/><code>swarm.py, _run_intervention()</code>"]
+  mark --> regen
+  rev --> regen
+  done[("status=applied, replacement recorded")]
+  regen --> done
+  board["The board redraws itself"]
+  done -.-> board
+  </div>
+  <h3>Step by step</h3>
+  <ol>
+    <li>You open a box on the board and use one of the two review actions at the top of the panel. A reason is
+    required in both cases — a discard without a reason teaches the agents nothing, so the button stays
+    disabled until you write one.</li>
+    <li><code>api/app.py</code> <span class="small">(POST /api/swarm/nodes/{id}/discard or /feedback)</span> —
+    writes a <code>node_interventions</code> row marked pending, and starts the work in the background. Your
+    click returns straight away.</li>
+    <li><code>agents/swarm.py, intervene()</code> → <code>_run_intervention()</code> — for a discard, marks
+    the box and its descendants discarded and builds a replacement beside it; for feedback, rewrites the box and
+    rebuilds what sits below it. Either way your sentence goes into the prompt, so the agents are told what to
+    avoid or what to fix rather than being asked to try again blindly.</li>
+    <li>The review row is marked applied and points at whatever the agents produced. The board polls that row —
+    not the run's own running flag — because a review is a small piece of extra work rather than a whole new
+    pass.</li>
+    <li>The reviewer's words survive independently of the boxes. Migration <code>0035</code> exists precisely
+    so that rebuilding a branch cannot erase the discard reasons underneath it.</li>
+  </ol>
+  <p><strong>In one sentence:</strong> a written objection is stored, applied to that part of the tree, and fed
+  back into the agents as context for the retry — and it outlives the boxes it was about, so the run's review
+  history reads end to end.</p>
 
   <div class="callout">Notice how often the same files reappear — <code>api/app.py</code> is the front door,
   <code>ingestion/comprehend/pipeline.py</code> is the shared brain-builder, <code>billing/metering.py</code> is

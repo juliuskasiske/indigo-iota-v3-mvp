@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>8 · How transformers work — Indigo Iota explainer</title>
+<title>8. How transformers work — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 <style>
 /* ---- diagram boxes ---- */
@@ -134,17 +134,19 @@
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html" class="active">8 · Transformers</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html" class="active">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -167,7 +169,7 @@
 
 
   <!-- ── 1. WORD AS A POINT ─────────────────────────────────────────────── -->
-  <h2>1 · From word to coordinate</h2>
+  <h2>1. From word to coordinate</h2>
   <p>
     The foundational idea: every word (and every fragment of a word) maps to a point
     in a high-dimensional space. The position encodes meaning. Words that mean similar
@@ -224,7 +226,7 @@
 
 
   <!-- ── 2. THE PROBLEM ─────────────────────────────────────────────────── -->
-  <h2>2 · The fundamental problem — context</h2>
+  <h2>2. The fundamental problem — context</h2>
 
   <p>The lookup table gives every token a <em>fixed</em> coordinate. That breaks immediately:</p>
 
@@ -251,7 +253,7 @@
 
 
   <!-- ── 3. TOKENS ─────────────────────────────────────────────────────── -->
-  <h2>3 · Tokens — what the model actually sees</h2>
+  <h2>3. Tokens — what the model actually sees</h2>
 
   <p>
     The model does not see words. It sees <strong>tokens</strong> — chunks produced
@@ -281,7 +283,7 @@
 
 
   <!-- ── 4. RESIDUAL STREAM ─────────────────────────────────────────────── -->
-  <h2>4 · The residual stream — a shared whiteboard</h2>
+  <h2>4. The residual stream — a shared whiteboard</h2>
 
   <p>
     Imagine a whiteboard with one column per token. Each column holds
@@ -319,7 +321,7 @@
 
 
   <!-- ── 5. ONE ATTENTION HEAD ──────────────────────────────────────────── -->
-  <h2>5 · One attention head — step by step</h2>
+  <h2>5. One attention head — step by step</h2>
 
   <p>
     Each transformer layer runs <strong>self-attention</strong>: every token gets
@@ -426,7 +428,7 @@
 
 
   <!-- ── 6. 16 HEADS ───────────────────────────────────────────────────── -->
-  <h2>6 · 16 heads per layer — what each one looks for</h2>
+  <h2>6. 16 heads per layer — what each one looks for</h2>
 
   <p>
     One head gives one 64-number slice of context. jina-v3 runs
@@ -472,7 +474,7 @@
 
 
   <!-- ── 7. FEED-FORWARD ────────────────────────────────────────────────── -->
-  <h2>7 · The feed-forward block — per-token pattern matching</h2>
+  <h2>7. The feed-forward block — per-token pattern matching</h2>
 
   <p>
     After attention shares information across tokens, each token's column passes
@@ -506,8 +508,8 @@
   </div>
 
 
-  <!-- ── 8. 24 LAYERS ───────────────────────────────────────────────────── -->
-  <h2>8 · 24 layers — what stacking achieves</h2>
+  <!-- ── 8. 24 layers ───────────────────────────────────────────────────── -->
+  <h2>8. 24 layers — what stacking achieves</h2>
 
   <p>
     The whiteboard gets rewritten 24 times. Attention + FFN = one layer.
@@ -517,13 +519,13 @@
   <div class="diagram">
     <pre>
   ┌────────────────────────────────────────────────────────────┐
-  │  LAYER  1:  Surface structure — punctuation, word order    │
-  │  LAYER  4:  Morphology — verb tenses, plural endings       │
-  │  LAYER  8:  Syntactic roles — subject/verb/object arcs     │
-  │  LAYER 12:  Named entities — person, organisation, place   │
-  │  LAYER 16:  Semantic frames — finance, geography, medicine  │
-  │  LAYER 20:  Cross-sentence coherence, discourse structure  │
-  │  LAYER 24:  Final contextualised representation            │
+  │  Layer  1:  Surface structure — punctuation, word order    │
+  │  Layer  4:  Morphology — verb tenses, plural endings       │
+  │  Layer  8:  Syntactic roles — subject/verb/object arcs     │
+  │  Layer 12:  Named entities — person, organisation, place   │
+  │  Layer 16:  Semantic frames — finance, geography, medicine  │
+  │  Layer 20:  Cross-sentence coherence, discourse structure  │
+  │  Layer 24:  Final contextualised representation            │
   │              ↓                                             │
   │    Each token column now reflects the full sentence.       │
   └────────────────────────────────────────────────────────────┘
@@ -539,7 +541,7 @@
 
 
   <!-- ── 9. POOLING ─────────────────────────────────────────────────────── -->
-  <h2>9 · Pooling — collapsing many columns into one vector</h2>
+  <h2>9. Pooling — collapsing many columns into one vector</h2>
 
   <p>
     After 24 layers you have one 1 024-number column per token. But you need
@@ -577,7 +579,7 @@
 
 
   <!-- ── 10. RAM BREAKDOWN ─────────────────────────────────────────────── -->
-  <h2>10 · Where the 7 GB comes from — the definitive breakdown</h2>
+  <h2>10. Where the 7 GB comes from — the definitive breakdown</h2>
 
   <p>
     Your server saw <code>anon-rss: 7 272 316 kB</code> (≈ 7.2 GB) in the OOM log.
@@ -705,7 +707,7 @@
 
 
   <!-- ── 11. WHY SMALL MODEL WORKS ─────────────────────────────────────── -->
-  <h2>11 · Why a smaller model is fine for email classification</h2>
+  <h2>11. Why a smaller model is fine for email classification</h2>
 
   <p>
     jina-v3's size is justified when you need to embed long legal documents (8 192
@@ -774,7 +776,7 @@
   </table>
 
   <div class="pager">
-    <a href="07-mcp.html">← 7 · MCP &amp; connectors</a>
+    <a href="07-mcp.html">← 7, MCP &amp; connectors</a>
     <a class="next" href="09-comprehend-walkthrough.html">Next: Comprehend walkthrough →</a>
   </div>
 </main>

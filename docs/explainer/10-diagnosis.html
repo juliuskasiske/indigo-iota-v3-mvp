@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10. Diagnosis — Indigo Iota explainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html" class="active">10. Diagnosis</a>
+  </nav>
+</div></div>
+
+<main>
+  <p class="kicker">Chapter 10</p>
+  <h1>The diagnosis engine</h1>
+  <p class="lead">Chapters 1 to 9 describe how Iota builds a <em>memory</em> of a company. This chapter
+  describes what it now does with that memory: it works out where the company is losing money, and lays the
+  reasoning out as a tree you can argue with.</p>
+
+  <div class="callout">
+    This is the newest part of the product and the biggest change since the earlier version of this guide.
+    If you read this document a while ago, everything up to Chapter 9 still holds. This chapter is new.
+  </div>
+
+  <h2>Two layers, and why the difference matters</h2>
+
+  <p>It helps to hold two ideas apart, because they are easy to confuse.</p>
+
+  <p>The <strong>context layer</strong> is the memory. It reads emails and documents and turns them into
+  organised knowledge: a page for each person, each company, each deal. It does not have an opinion. It only
+  knows things. Chapters 1 to 9 are all about this layer.</p>
+
+  <p>The <strong>diagnosis layer</strong> is the reasoning. It reads that memory and produces an argument:
+  <em>here is where your money is leaking, here is roughly how much, and here is what to do about it</em>. It
+  is opinionated on purpose. This chapter is about this layer.</p>
+
+  <div class="callout analogy">
+    The context layer is a very good researcher who has read every email in the company and can tell you
+    anything you ask. The diagnosis layer is the consultant who reads the researcher's notes and says
+    "you are giving away 19% in discounts against a 12% policy, and it is costing you about €400,000 a year."
+    One knows facts. The other makes a case.
+  </div>
+
+  <h2>The words you need</h2>
+
+  <p>Five terms carry the whole chapter. None of them are technical in a computer-science sense; they come
+  from management consulting.</p>
+
+  <h3>Objective</h3>
+  <p>What the company is trying to achieve, written down precisely enough to be checked. Not "grow the
+  business" but "grow revenue from €6.2M to €12.4M, as a level we keep earning every year, by the end of
+  2027." You set this on a screen; the software does not guess it.</p>
+
+  <h3>Hypothesis</h3>
+  <p>A statement that <em>might</em> be true and can be tested. "We are losing deals because our prices are
+  too high" is a hypothesis. You can go and check it. "Our sales team should try harder" is not — there is
+  nothing to check.</p>
+
+  <h3>Hypothesis tree</h3>
+  <p>The objective at the top, split into a handful of possible explanations, each of those split again, until
+  the bottom of the tree is a list of specific things somebody could actually do. Drawing the reasoning as a
+  tree is standard practice in consulting, because it makes the <em>shape</em> of an argument visible: you can
+  see what was considered, and what was not.</p>
+
+  <h3>MECE</h3>
+  <p>Pronounced "mee-see". It stands for <strong>Mutually Exclusive, Collectively Exhaustive</strong>. It is a
+  test you apply to any split in the tree, and it asks two questions:</p>
+  <ul>
+    <li><strong>Mutually exclusive</strong> — do the branches overlap? If one branch is "new customers" and
+    another is "enterprise customers", they overlap, because a new customer can be an enterprise customer. You
+    would count the same money twice.</li>
+    <li><strong>Collectively exhaustive</strong> — do the branches, together, cover everything? If revenue can
+    only change through price, volume, or mix, then a split into "price" and "volume" has left something out.
+    An answer might be hiding in the part you did not look at.</li>
+  </ul>
+  <div class="callout analogy">
+    Think of cutting a cake. Mutually exclusive means no two slices contain the same crumb. Collectively
+    exhaustive means the slices together are the whole cake, with nothing left on the plate.
+  </div>
+
+  <h3>Initiative</h3>
+  <p>Something a team could start on Monday morning. "Improve pricing" is not an initiative — it is a wish.
+  "Compare our list prices for the top 50 products against three named competitors" is an initiative, because
+  a person could be assigned to it tomorrow and you would know when it was done.</p>
+
+  <h2>What an "agent" is here</h2>
+
+  <p>The word <strong>agent</strong> gets used loosely in the industry, so it is worth pinning down what it
+  means in this codebase, because it is deliberately unglamorous.</p>
+
+  <p>An agent is <strong>one job, one prompt, one call to the language model</strong>. A prompt is just a block
+  of written instructions we send along with the data. Each agent has a narrow task and is required to answer
+  in a fixed format that the code can read.</p>
+
+  <p>There is no magic. An agent does not run continuously, does not decide what to do next on its own, and
+  cannot take actions in the world. It is a function that happens to be implemented by asking a language model
+  a carefully-worded question. We use several of them in sequence because a small, well-specified question
+  gets a far better answer than one enormous vague one.</p>
+
+  <div class="callout warn">
+    The word "swarm" appears in the code (<code>backend/src/agents/swarm.py</code>) and in the interface. It
+    is historical, and slightly misleading: the agents run <strong>one after another</strong>, not in parallel
+    and not competitively. Read it as "the group of agents", nothing more.
+  </div>
+
+  <h2>The seven agents</h2>
+
+  <p>Each row is one job. The "asks the model" column tells you whether that step spends money — some steps are
+  plain code and cost nothing.</p>
+
+  <table>
+    <tr><th>Agent</th><th>Its one job</th><th>Asks the model?</th></tr>
+    <tr><td><strong>Objective framer</strong></td><td>Turns the form you filled in into one plain sentence a partner could open a meeting with.</td><td>Yes, once</td></tr>
+    <tr><td><strong>Decomposition</strong></td><td>Splits a node into 2–4 branches that pass the MECE test, and writes down why that split is the right one.</td><td>Yes, once per node</td></tr>
+    <tr><td><strong>Initiative design</strong></td><td>Turns a bottom branch into concrete things to do.</td><td>Yes, once per branch</td></tr>
+    <tr><td><strong>Validator</strong></td><td>Goes back to the company's own emails and documents and pulls out the facts that bear on an initiative. Forbidden from inventing anything.</td><td>Yes</td></tr>
+    <tr><td><strong>Planning</strong></td><td>Asks "what would have to be true for this to be worth doing?", works out how you would size it, and names the first steps.</td><td>Yes</td></tr>
+    <tr><td><strong>Opportunity sizer</strong></td><td>Puts a number on it, in the same unit as the objective, and says whether it can realistically land before the deadline.</td><td>Yes</td></tr>
+    <tr><td><strong>Judge</strong></td><td>Reads everything the others produced and decides whether it holds up. Can reject a number the facts do not support.</td><td>Yes</td></tr>
+  </table>
+
+  <p>One more step is not an agent at all. After the tree is built, the status of each branch is
+  <strong>calculated</strong> from the initiatives beneath it — supported if anything under it is supported,
+  and so on down. That is ordinary code, in <code>_roll_up()</code>. Asking a model to do arithmetic it can get
+  wrong, when a loop can get it right every time, would be a poor trade.</p>
+
+  <h2>How one pass runs, start to finish</h2>
+
+  <div class="mermaid">
+flowchart TB
+  obj["You fill in the objective<br/>(metric, target, deadline)"]
+  frame["Framer writes one sentence"]
+  root["That sentence becomes<br/>the root of the tree"]
+  dec["Decomposition splits it into<br/>MECE branches, with reasons"]
+  more{"Is a branch<br/>concrete enough?"}
+  init["Initiative design proposes<br/>things to actually do"]
+  eviq["Search the memory for<br/>facts about THIS initiative"]
+  val["Validator: what do the<br/>facts actually say?"]
+  plan["Planning: what must be true?<br/>What are the next steps?"]
+  size["Sizer: how much is it worth,<br/>and can it land in time?"]
+  judge["Judge: does this hold up?"]
+  card["Save it as an initiative card"]
+
+  obj --> frame --> root --> dec --> more
+  more -- "no, split again" --> dec
+  more -- "yes" --> init --> eviq --> val --> plan --> size --> judge --> card
+  </div>
+
+  <p>Written out plainly:</p>
+  <ol>
+    <li>You fill in the objective on the Objectives screen and press save.</li>
+    <li>The framer compresses it into one sentence. You can read it, edit it, or ask for a new one. This
+    matters because that sentence becomes the root of the tree, so you should agree with it before the
+    software builds an argument on top of it.</li>
+    <li>The tree starts with that sentence as its only box.</li>
+    <li>Decomposition splits it into branches. Each branch carries a written reason. Branches can be split
+    again — the software allows two levels of splitting, then stops.</li>
+    <li>Every bottom branch gets initiatives proposed for it.</li>
+    <li>Each initiative then goes through four agents in order: validator, planning, sizer, judge. Their
+    combined output becomes the card you see when you click the box.</li>
+  </ol>
+
+  <h2>Where the facts come from</h2>
+
+  <p>This is the part that keeps the whole thing honest, so it is worth being precise.</p>
+
+  <p>Before the agents look at any node, the code searches the company's own memory for material relevant to
+  <em>that specific node</em>. A branch about pricing gets pricing emails. A branch about staff turnover gets
+  different ones. The search combines two methods, which Chapter 1 explains in more depth:</p>
+  <ul>
+    <li><strong>Meaning-based search</strong> — finds text that means something similar, even when it uses
+    none of the same words.</li>
+    <li><strong>Keyword search</strong> — finds text containing the actual words.</li>
+  </ul>
+
+  <p>Those excerpts are handed to the agent <strong>numbered</strong>, like a numbered list of exhibits. The
+  agent is told to cite the number of any excerpt it relies on. When it comes back, the code looks up the
+  numbers it cited and attaches the real source to the node. That is why every fact in the interface can show
+  you the document it came from.</p>
+
+  <div class="callout">
+    <strong>Why numbering matters.</strong> A language model will sometimes cite a source that does not exist —
+    it will confidently say "excerpt 9" when you only gave it three. Because the code resolves each number
+    against the list it actually sent, an invented citation resolves to nothing and is silently dropped. It
+    cannot become a fake source in the interface. This is checked by a test
+    (<code>test_swarm_parsing.py</code>).
+  </div>
+
+  <h2>What an initiative card contains</h2>
+
+  <p>Every box at the bottom of the tree opens into a card with the same five parts. They are always the same
+  five, so two initiatives can be compared fairly.</p>
+
+  <table>
+    <tr><th>Part</th><th>What it answers</th><th>Which agent wrote it</th></tr>
+    <tr><td><strong>Name</strong></td><td>What is this, in a few words?</td><td>Initiative design</td></tr>
+    <tr><td><strong>What this means</strong></td><td>What is actually included, and what is not?</td><td>Initiative design</td></tr>
+    <tr><td><strong>How it could be sized</strong></td><td>What is the arithmetic, and where would each number come from?</td><td>Planning</td></tr>
+    <tr><td><strong>What would need to be true</strong></td><td>Which assumptions is this resting on? Each one has to be checkable.</td><td>Planning</td></tr>
+    <tr><td><strong>Immediate next steps</strong></td><td>What could somebody start this week?</td><td>Planning</td></tr>
+  </table>
+
+  <p>Alongside those, the card carries a value ("€450k recurring, FY2027"), the reasoning behind that number, a
+  confidence level, whether it can realistically be achieved before the deadline, and the list of facts it
+  stands on.</p>
+
+  <h2>Why the value is stored as a number</h2>
+
+  <p>An earlier version of this code asked the model for a display string like <code>"€0.6M (est.)"</code> and
+  stored that. It reads fine and it is nearly useless: you cannot add up strings. To show "we have found €3.2M
+  of a €12.4M target" you have to be able to total the values.</p>
+
+  <p>So the sizer is required to return a plain number — <code>450000</code>, not <code>"€450k"</code> — along
+  with the currency, whether it recurs every year or happens once, and which year it applies to. The interface
+  does the formatting. Two rules protect the total:</p>
+  <ul>
+    <li>Initiatives the judge threw out are not counted.</li>
+    <li>A <strong>one-off</strong> gain is never added into a <strong>recurring</strong> target. Getting
+    €500,000 once is not the same as earning €500,000 every year, and adding them together would overstate the
+    result. One-off value is reported on its own line.</li>
+  </ul>
+
+  <h2>Steering it: discard and feedback</h2>
+
+  <p>The software is confidently wrong sometimes. So every box in the tree can be argued with, in two ways.</p>
+
+  <h3>Discard — "this is wrong"</h3>
+  <p>You reject a box and say why. The box and everything beneath it are marked as discarded. Then the agents
+  propose a replacement, and they are shown three things: the box you rejected, your reason, and the
+  neighbouring boxes the replacement must not overlap with.</p>
+
+  <p>The rejected box is <strong>kept, not deleted</strong>. It stays on the board, struck through. Two reasons:
+  the record of what was considered and rejected is part of the argument, and your reason is the single most
+  useful thing the replacement agent can be told.</p>
+
+  <div class="callout analogy">
+    Discard is crossing something out in a notebook rather than tearing the page out. You can still see what
+    you rejected, and so can everybody else.
+  </div>
+
+  <h3>Feedback — "this is close, but…"</h3>
+  <p>You leave a note. The box is rewritten to reflect it, and everything beneath it is rebuilt with your note
+  carried down. So a note on a branch reaches the initiatives underneath it, not just the box you clicked.</p>
+
+  <p>Here nothing is marked as discarded, because you were steering rather than rejecting. The old children are
+  replaced quietly. A real example from testing: a branch called "New logo acquisition" was given the note
+  <em>"focus purely on the DACH enterprise segment, no appetite for SMB or self-serve."</em> It came back
+  renamed "DACH enterprise new logo acquisition", with the exclusion written into its reasoning, and half the
+  rebuilt initiatives beneath it named that segment.</p>
+
+  <h3>One thing you cannot discard</h3>
+  <p>The objective at the root. There is nothing to replace it with — it came from you, not from an agent. If
+  it is wrong, change it on the Objectives screen. You can still leave feedback on it, which re-cuts the whole
+  tree beneath it.</p>
+
+  <h2>Keeping the cost bounded</h2>
+
+  <p>Every step above is a paid call to a language model, so the code sets hard ceilings. They live at the top
+  of <code>swarm.py</code> where they are easy to find and change.</p>
+
+  <table>
+    <tr><th>Limit</th><th>Value</th><th>What it stops</th></tr>
+    <tr><td>Levels of splitting</td><td>2</td><td>A tree that keeps dividing forever</td></tr>
+    <tr><td>Branches per split</td><td>4</td><td>A single split fanning out too wide</td></tr>
+    <tr><td>Branches in total</td><td>8</td><td>Total width across the whole tree</td></tr>
+    <tr><td>Initiatives in total</td><td>10</td><td>The most expensive part, four model calls each</td></tr>
+    <tr><td>Model calls per pass</td><td>55</td><td>The backstop, if every other limit is somehow evaded</td></tr>
+    <tr><td>Model calls per review</td><td>25</td><td>Redoing one node must not cost what a whole run costs</td></tr>
+  </table>
+
+  <p>Separately, before <em>every single call</em>, the code checks whether the workspace still has credit. If
+  not it stops cleanly and says so, rather than continuing to spend. In an earlier version this check was
+  missing from these agents entirely — a workspace at zero could still run up a bill, and none of that spending
+  appeared in the usage reports.</p>
+
+  <h2>The files that do this</h2>
+
+  <table>
+    <tr><th>File</th><th>What lives there</th></tr>
+    <tr><td><code>backend/src/agents/swarm.py</code></td><td>The seven prompts and the loop that runs them. The centre of this chapter.</td></tr>
+    <tr><td><code>backend/src/agents/llm.py</code></td><td>The single place a model call happens: the credit check, the retry, the cost recording.</td></tr>
+    <tr><td><code>backend/src/db/objective.py</code></td><td>Reads and writes the objective, and does the target arithmetic in one place so the screen and the agents cannot disagree.</td></tr>
+    <tr><td><code>backend/src/db/hypothesis.py</code></td><td>Reads and writes the tree: nodes, evidence, cards, and your review comments.</td></tr>
+    <tr><td><code>frontend/src/components/steps/align-panel.tsx</code></td><td>The Objectives screen.</td></tr>
+    <tr><td><code>frontend/src/components/steps/tree-layout.ts</code></td><td>Works out where each box goes on the board. Pure arithmetic, no visuals.</td></tr>
+    <tr><td><code>frontend/src/components/steps/hypothesis-canvas.tsx</code></td><td>Draws the board, handles panning and zooming, and shows the detail panel.</td></tr>
+  </table>
+
+  <h2>Honest limitations</h2>
+
+  <p>Three things are worth knowing before you trust the output.</p>
+
+  <p><strong>The MECE test is not enforced, only requested.</strong> The decomposition agent is told to produce
+  non-overlapping branches, and usually does. But it can still hand back a split where one branch quietly
+  contains another. Nothing in the code checks this — it needs a human eye, which is part of why discard and
+  feedback exist.</p>
+
+  <p><strong>Model quality shows most in two places.</strong> Splitting a problem cleanly, and judging whether
+  evidence really supports a number, are the two hardest jobs here. On a cheap model they are the two that
+  visibly suffer. The code allows a different model per agent
+  (<code>LLM_MODEL_DECOMPOSITION</code>, <code>LLM_MODEL_JUDGE</code>) precisely so those two can be upgraded
+  without paying more for the easy steps.</p>
+
+  <p><strong>A restart loses work in progress.</strong> A running pass lives in the memory of the server
+  process. If the server restarts mid-run, that work is gone and cannot be resumed. On startup the code marks
+  any half-finished run as stopped so the interface does not wait forever for something nobody is doing.</p>
+
+  <div class="pager">
+    <a href="09-comprehend-walkthrough.html">← Comprehend</a>
+    <a class="next" href="index.html">Back to the start →</a>
+  </div>
+</main>
+
+<script src="mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose',
+  themeVariables: { primaryColor:'#ffffff', primaryTextColor:'#0f0f0f', primaryBorderColor:'#3812f3',
+    lineColor:'#7159f6', secondaryColor:'#ece9ff', tertiaryColor:'#f0f0ec',
+    fontFamily:'Albert Sans, ui-sans-serif, system-ui, sans-serif', fontSize:'14px' }});
+</script>
+</body>
+</html>

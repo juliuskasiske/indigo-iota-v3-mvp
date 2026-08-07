@@ -94,7 +94,7 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 36px 24px 120px; }
 
 /* Section label — Albert Sans, uppercase, indigo (matches the guide's page header). */
 .kicker {
-  font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em;
+  font-family: var(--sans); letter-spacing: 0;
   font-size: 12px; font-weight: 400; color: var(--indigo); margin: 0 0 10px;
 }
 h1 { font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 16px; font-weight: 800; }
@@ -152,22 +152,22 @@ pre code { background: none; border: none; color: inherit; padding: 0; font-size
   border-bottom: 1px solid var(--border);
 }
 .callout.analogy::before { content: "In plain terms — "; font-family: var(--mono);
-  font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--indigo); }
+  font-size: 13px; color: var(--indigo); }
 .callout.warn { border-left-color: var(--warning); background: rgba(207,127,16,0.08); }
 .callout.warn::before { content: "Caution — "; font-family: var(--mono); font-size: 12px;
-  text-transform: uppercase; letter-spacing: 0.06em; color: var(--warning); }
+  color: var(--warning); }
 
 /* ---- tables ---- */
 table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14.5px; }
 th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { background: var(--soft); font-family: var(--mono); font-weight: 400; font-size: 11.5px;
-  text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  color: var(--muted); }
 tr:hover td { background: #faf9f5; }
 td code { font-size: 0.82em; white-space: nowrap; }
 
 /* ---- pills / tags ---- (mirror the badge system: tinted bg + coloured text) */
 .pill { display: inline-block; font-family: var(--sans); font-size: 11.5px; font-weight: 500;
-  padding: 2px 9px; border-radius: 999px; letter-spacing: 0.01em; vertical-align: middle; }
+  padding: 2px 9px; border-radius: 999px; vertical-align: middle; }
 .pill.live { background: var(--indigo-tint-strong); color: var(--indigo); }   /* wired to backend */
 .pill.mock { background: var(--cream); color: var(--muted); border: 1px solid var(--border-strong); } /* demo / draft */
 .pill.db   { background: rgba(28,138,82,0.13); color: var(--success); }        /* database */
@@ -218,7 +218,7 @@ figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--muted); m
   padding: 0 8px; border: 1px solid var(--border); background: rgba(240,240,236,0.92);
   color: var(--ink); border-radius: 7px; cursor: pointer; line-height: 1; backdrop-filter: blur(4px); }
 .ertools button:hover { border-color: var(--indigo); color: var(--indigo); }
-.ertools .reset { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.ertools .reset { font-size: 11px; }
 .erhint { font-family: var(--mono); font-size: 12px; color: var(--subtle); margin: 7px 2px 0; }
 
 .er-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
@@ -231,13 +231,11 @@ figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--muted); m
 .erpanel { border: 1px solid var(--border); border-left: 3px solid var(--indigo);
   border-radius: 0 8px 8px 0; background: var(--card); padding: 15px 18px; margin: 14px 0 0; }
 .erpanel.empty { border-left-color: var(--border-strong); color: var(--muted); font-size: 15px; }
-.erpanel .filled { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--subtle); }
+.erpanel .filled { font-family: var(--mono); font-size: 11px; color: var(--subtle); }
 .erpanel .tname { font-family: var(--mono); font-size: 15px; color: var(--indigo); margin: 1px 0 0;
   font-weight: 700; }
 .erpanel .summary { font-size: 15.5px; margin: 8px 0 10px; }
-.erpanel .colslabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--subtle); margin: 0 0 6px; }
+.erpanel .colslabel { font-family: var(--mono); font-size: 11px; color: var(--subtle); margin: 0 0 6px; }
 .erpanel ul.cols { margin: 0; padding-left: 0; list-style: none; }
 .erpanel ul.cols li { margin: 0; padding: 7px 0; font-size: 14.5px; line-height: 1.5;
   border-top: 1px solid var(--border); }
@@ -265,8 +263,7 @@ figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--muted); m
 .tree .file { padding: 3px 8px 3px 8px; display: flex; align-items: baseline; gap: 8px;
   border-radius: 7px; }
 .tree .file:hover { background: #faf9f5; }
-.tree .layer-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--indigo); margin: 0 0 2px; }
+.tree .layer-label { font-family: var(--mono); font-size: 11px; color: var(--indigo); margin: 0 0 2px; }
 
 /* Two-column atlas: tree on the left, explanation pane on the right.
    The left tree shows names only; clicking any folder/file fills the pane. */
@@ -282,8 +279,7 @@ figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--muted); m
 .atlaspane { border: 1px solid var(--border); border-left: 3px solid var(--indigo);
   border-radius: 0 8px 8px 0; background: var(--card); padding: 16px 18px; min-height: 150px; }
 .atlaspane.empty { border-left-color: var(--border-strong); color: var(--muted); font-size: 15px; }
-.atlaspane .kind { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--subtle); }
+.atlaspane .kind { font-family: var(--mono); font-size: 11px; color: var(--subtle); }
 .atlaspane .pname { font-family: var(--mono); font-size: 16px; color: var(--indigo); font-weight: 700;
   margin: 2px 0 0; word-break: break-word; }
 .atlaspane .pdesc { font-size: 15.5px; margin: 10px 0 0; }

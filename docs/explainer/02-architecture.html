@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2 · Architecture — Indigo Iota explainer</title>
+<title>2. Architecture — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html" class="active">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html" class="active">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -27,6 +29,17 @@
   <h1>The architecture</h1>
   <p class="lead">Five boxes. Three of them we built and run ourselves; two are outside services we talk to.
   Once you can name these five and the arrows between them, you understand the system's skeleton.</p>
+
+  <h2>Before the boxes: the two layers</h2>
+  <p>The backend does two jobs that are worth holding apart in your head, because they run at different times
+  and for different reasons.</p>
+  <table>
+    <tr><th>Layer</th><th>What it does</th><th>When it runs</th><th>Chapter</th></tr>
+    <tr><td><strong>Context</strong></td><td>Reads incoming email and documents, and turns them into organised memory</td><td>Continuously, on a schedule</td><td>1 to 9</td></tr>
+    <tr><td><strong>Diagnosis</strong></td><td>Reads that memory and builds an argument about where value is leaking</td><td>Only when somebody presses start</td><td>10</td></tr>
+  </table>
+  <p>They share the same backend process and the same database. The diagnosis layer never reads a mailbox and
+  the context layer never has an opinion. Everything below applies to both unless it says otherwise.</p>
 
   <h2>The whole system on one page</h2>
   <div class="mermaid">
@@ -48,7 +61,7 @@ flowchart TB
   imap["📥 IMAP mail host<br/>(customers not on Microsoft)"]
 
   user -->|clicks, sees pages| web
-  mcpc -->|"/mcp · OAuth + tools"| web
+  mcpc -->|"/mcp, OAuth + tools"| web
   web -->|"/api/*, /auth/*"| api
   web -->|"/mcp"| api
   api --> control
@@ -61,7 +74,7 @@ flowchart TB
 
   <h2>The five boxes, one by one</h2>
 
-  <h3>1 · The web server <span class="small">(Caddy — the <code>web</code> container)</span></h3>
+  <h3>1. The web server <span class="small">(Caddy — the <code>web</code> container)</span></h3>
   <p>The browser only ever talks to this one address. Caddy does two jobs at once: it hands the browser the
   website files (HTML/JavaScript), and it acts as a <strong>reverse proxy</strong> — any request whose
   address starts with <code>/api/</code> or <code>/auth/</code> is quietly forwarded to the backend. Because
@@ -71,12 +84,12 @@ flowchart TB
   the desk; the desk either hands them a brochure (the website) or phones the right department (the backend)
   on their behalf.</div>
 
-  <h3>2 · The backend <span class="small">(FastAPI, Python — the <code>api</code> container)</span></h3>
+  <h3>2. The backend <span class="small">(FastAPI, Python — the <code>api</code> container)</span></h3>
   <p>This is the brain of the operation in the engineering sense: it checks who you are, enforces what you're
   allowed to do, reads and writes the databases, runs the ingestion pipeline (Capture → Triage → Comprehend → Index), talks to the AI, and meters
   the cost. Everything trustworthy happens here. It's the <code>backend/src/</code> folder.</p>
 
-  <h3>3 · The databases <span class="small">(PostgreSQL — the <code>db</code> container)</span></h3>
+  <h3>3. The databases <span class="small">(PostgreSQL — the <code>db</code> container)</span></h3>
   <p>One Postgres server holds many databases. The <strong>control plane</strong> (<code>iota_control</code>)
   is the shared directory + billing ledger. Then there is <strong>one brain database per customer</strong>
   (<code>iota_tenant_acme</code>, …), each holding only that customer's knowledge. (A legacy single-customer
@@ -84,14 +97,14 @@ flowchart TB
   <div class="callout">This separation is the product's central safety promise: customer A's data physically
   lives in a different database from customer B's. <a href="03-data-model.html">Chapter 3</a> opens both up.</div>
 
-  <h3>4 · LLMBase <span class="small">(outside service)</span></h3>
+  <h3>4. LLMBase <span class="small">(outside service)</span></h3>
   <p>The EU-hosted, OpenAI-compatible AI endpoint. The backend sends it text and gets back text — to comprehend
-  an email into entities, or to write a cited answer. It's the place the <em>backend itself</em> sends data to a
+  an email into entities, to write a cited answer, or to reason its way through a hypothesis tree. It's the place the <em>backend itself</em> sends data to a
   third party, chosen to keep that processing inside the EU. (One other route exists, but only at a user's own
   request: if they connect an MCP client, their brain answers flow out to <strong>their</strong> assistant —
   Claude or ChatGPT — see <a href="07-mcp.html">Chapter 7</a>.)</p>
 
-  <h3>5 · The customer's mail &amp; identity <span class="small">(Microsoft, or IMAP + native login)</span></h3>
+  <h3>5. The customer's mail &amp; identity <span class="small">(Microsoft, or IMAP + native login)</span></h3>
   <p>For a Microsoft customer this is their own <strong>Microsoft 365</strong>: <strong>Entra</strong> handles
   login (staff sign in with their work account) and <strong>Graph</strong> is the door through which Iota
   reads the mailbox it's been granted — both require the customer to grant permission first.</p>
@@ -102,14 +115,82 @@ flowchart TB
   mail half is the IMAP host while the login half lives entirely inside our own control plane.
   <a href="05-flows.html">Chapter 5</a> walks both sign-in paths.</p>
 
+  <h2>Inside the backend: the eight modules</h2>
+  <p>Box 2 above is one container, but inside it the Python code is split into folders that each own one
+  concern. You will meet all of these again; this is the map.</p>
+  <table>
+    <tr><th>Folder under <code>backend/src/</code></th><th>Owns</th><th>Layer</th></tr>
+    <tr><td><code>api/</code></td><td>Every web address the browser can call, and the permission check on each one</td><td>both</td></tr>
+    <tr><td><code>auth/</code></td><td>Sign-in, sessions, cookies, and the two-factor codes</td><td>—</td></tr>
+    <tr><td><code>tenancy/</code></td><td>Creating a customer, creating their database, running migrations on it</td><td>—</td></tr>
+    <tr><td><code>ingestion/</code></td><td>The four-stage pipeline: capture, triage, comprehend, index</td><td>context</td></tr>
+    <tr><td><code>db/</code></td><td>The SQL. One module per group of tables; nothing else writes SQL</td><td>both</td></tr>
+    <tr><td><code>agents/</code></td><td>The diagnosis engine: the seven agents, their prompts, and the shared model client</td><td>diagnosis</td></tr>
+    <tr><td><code>search/</code></td><td>Finding relevant text: keyword and meaning-based search combined</td><td>both</td></tr>
+    <tr><td><code>billing/</code></td><td>Counting what each AI call cost and stopping when credits run out</td><td>both</td></tr>
+  </table>
+  <p>The rule that keeps this honest: <strong>anything that writes SQL lives in <code>db/</code></strong>. The
+  agents do not open database connections and compose queries; they call a function in
+  <code>db/hypothesis.py</code> or <code>db/objective.py</code>. That is why a change to a table is a change to
+  one file.</p>
+
+  <h3>How the diagnosis layer sits on top</h3>
+  <p>The diagnosis engine is deliberately parasitic on the context layer. It has no reader, no connector, no
+  storage of raw material of its own. When an agent needs a fact it asks the same search function the chat box
+  uses, and gets back the same chunks of text with the same citations.</p>
+  <div class="mermaid">
+flowchart TB
+  obj["Objective set by an admin<br/>(metric, baseline, target, deadline)"]
+  subgraph agentsbox["backend/src/agents/ — the diagnosis engine"]
+    direction TB
+    sw["swarm.py<br/>the sequence: which agent runs when"]
+    llmc["llm.py<br/>one shared model client<br/>+ credit check + cost recording"]
+    sw --> llmc
+  end
+  search["search: hybrid_search()<br/>meaning + keyword"]
+  brain[("The customer's brain database")]
+  nodes[("hypothesis_nodes<br/>hypothesis_evidence<br/>initiative_cards")]
+  ui["The Overview board in the browser"]
+
+  obj --> sw
+  sw -->|"asks for facts about this branch"| search
+  search --> brain
+  search -->|"chunks + where they came from"| sw
+  sw -->|"writes the tree as it goes"| nodes
+  nodes -->|"polled every few seconds"| ui
+  ui -->|"discard / feedback"| sw
+  </div>
+  <p>Two things in that picture are worth naming. The engine <strong>writes the tree as it goes</strong>, rather
+  than at the end — so the board fills in while you watch, and a run that dies halfway leaves the part it
+  finished. And the arrow back from the browser is real: rejecting a box sends the engine back to redo that
+  part, which is why the diagnosis is a conversation and not a report.</p>
+
   <h2>Where does each thing actually run?</h2>
   <table>
     <tr><th>Piece</th><th>Language / tool</th><th>Runs as</th><th>Repo folder</th></tr>
-    <tr><td>Website (the face)</td><td>TypeScript · Next.js/React</td><td><span class="pill mock">web container</span></td><td><code>frontend/</code></td></tr>
-    <tr><td>Backend (the logic)</td><td>Python · FastAPI</td><td><span class="pill live">api container</span></td><td><code>backend/src/</code></td></tr>
+    <tr><td>Website (the face)</td><td>TypeScript, Next.js/React</td><td><span class="pill mock">web container</span></td><td><code>frontend/</code></td></tr>
+    <tr><td>Backend (the logic)</td><td>Python, FastAPI</td><td><span class="pill live">api container</span></td><td><code>backend/src/</code></td></tr>
     <tr><td>Databases</td><td>PostgreSQL + pgvector</td><td><span class="pill db">db container</span></td><td><code>backend/migrations/</code></td></tr>
-    <tr><td>Run recipes</td><td>Docker Compose · Caddy</td><td>config files</td><td><code>infra/</code></td></tr>
+    <tr><td>Run recipes</td><td>Docker Compose, Caddy</td><td>config files</td><td><code>infra/</code></td></tr>
   </table>
+
+  <h2>Who else sees the data <span class="small">(the subprocessors)</span></h2>
+  <p>A <strong>subprocessor</strong> is an outside company that handles the customer's data on our behalf. If
+  you are ever asked "where does our email actually go", this table is the answer. It is deliberately short,
+  and keeping it short is a design goal rather than an accident.</p>
+  <table>
+    <tr><th>Who</th><th>What of the customer's data reaches them</th><th>Where</th><th>Can it be avoided?</th></tr>
+    <tr><td><strong>LLMBase</strong> (the AI endpoint)</td><td>The text of an email or document while it is being read, and the text of tree branches and facts while a diagnosis runs</td><td>EU</td><td>No — it is what does the reading and the reasoning</td></tr>
+    <tr><td><strong>The server host</strong></td><td>Everything, as bytes on a disk we rent</td><td>EU</td><td>No</td></tr>
+    <tr><td><strong>Microsoft 365</strong></td><td>Nothing new — it is <em>their own</em> mail system, which we read from and which logs their staff in</td><td>their tenant</td><td>Only used if the customer is on Microsoft</td></tr>
+    <tr><td><strong>An IMAP mail host</strong></td><td>Nothing new — again their own mail system</td><td>theirs</td><td>Only used if they are not on Microsoft</td></tr>
+    <tr><td><strong>Claude or ChatGPT</strong></td><td>Answers from their brain — but only if a user deliberately connects an assistant</td><td>that vendor</td><td>Yes, entirely optional, and revocable</td></tr>
+  </table>
+  <p>Two things are worth pointing out because people assume the opposite. <strong>Turning text into numbers for
+  search does not leave our machines</strong> — that model runs inside our own container, so the step people
+  most often worry about is the one with no third party in it at all (<a href="08-transformers.html">Chapter
+  8</a>). And <strong>an email that the filter rejects is never sent anywhere</strong>: it is judged locally by
+  comparing numbers, and only its rejection is recorded.</p>
 
   <h2>Two ways the same code runs</h2>
   <p>The exact same backend code runs in two modes, which is why you'll see two sets of Docker files in

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>9 · Comprehend walkthrough — Indigo Iota explainer</title>
+<title>9. Comprehend walkthrough — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 <style>
 /* ============================================================================
@@ -166,18 +166,19 @@
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
-    <a href="09-comprehend-walkthrough.html" class="active">9 · Comprehend</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html" class="active">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -241,7 +242,7 @@ Acme GmbH</div>
   <div class="player">
     <div class="player-top">
       <button class="playbtn" id="play">▶ Run comprehend</button>
-      <span class="player-hint" id="phint">~32 LLM calls peak · one email</span>
+      <span class="player-hint" id="phint">~32 LLM calls peak, one email</span>
     </div>
     <div class="track" id="track">
       <div class="fill" id="fill"></div>
@@ -288,7 +289,7 @@ Acme GmbH</div>
   </ul>
 
   <!-- ========================= TRANSLATE ========================= -->
-  <h2 id="s-translate">Stage 0 · Translate <span class="lang">DE → EN</span></h2>
+  <h2 id="s-translate">Stage 0, Translate <span class="lang">DE → EN</span></h2>
   <div class="stagebox">
     <h3><span class="agentno">T</span> TranslatorAgent</h3>
     <p>
@@ -342,7 +343,7 @@ Best, Michael Dempsey, Acme GmbH</pre></div>
   </div>
 
   <!-- ========================= IDENTIFY ========================= -->
-  <h2 id="s-identify">Stage 1 · Identify the entities</h2>
+  <h2 id="s-identify">Stage 1, Identify the entities</h2>
   <div class="stagebox">
     <h3><span class="agentno">1</span> IdentifierAgent</h3>
     <p>
@@ -353,7 +354,7 @@ Best, Michael Dempsey, Acme GmbH</pre></div>
       only when the text clearly states that entity's own address.
     </p>
 
-    <div class="det">System prompt (verbatim · comprehend/agents/identifier.py)</div>
+    <div class="det">System prompt (verbatim, comprehend/agents/identifier.py)</div>
     <details class="promptbox">
       <summary>IdentifierAgent.run() — type_lines / allowed are filled from the ontology</summary>
 <pre>List every distinct entity mentioned in the email below that
@@ -375,8 +376,8 @@ EMAIL:
 {email_text}</pre>
     </details>
     <p class="fillnote">For this tenant <code>{type_lines}</code> expands to:
-      <code>- person: a named individual …</code> ·
-      <code>- company: an organisation …</code> ·
+      <code>- person: a named individual …</code>,
+      <code>- company: an organisation …</code>,
       <code>- project: a named initiative or deal …</code></p>
 
     <div class="io">
@@ -404,7 +405,7 @@ EMAIL:
   </div>
 
   <!-- ========================= CANONICALIZE ========================= -->
-  <h2 id="s-canon">Stage 2 · Canonicalize onto known entities</h2>
+  <h2 id="s-canon">Stage 2, Canonicalize onto known entities</h2>
   <div class="stagebox">
     <h3><span class="agentno">2</span> CanonicalizerAgent <span class="pill mock" style="margin-left:6px">no LLM</span></h3>
     <p>
@@ -442,7 +443,7 @@ Michael Dempsey     → Michael Dempsey  (new)</pre></div>
   </div>
 
   <!-- ========================= INJECT ========================= -->
-  <h2 id="s-inject">Stage 2b · Inject the people on the envelope</h2>
+  <h2 id="s-inject">Stage 2b, Inject the people on the envelope</h2>
   <div class="stagebox">
     <h3><span class="agentno">+</span> Participant injection + the principal</h3>
     <p>
@@ -456,12 +457,12 @@ Michael Dempsey     → Michael Dempsey  (new)</pre></div>
 
     <div class="det">Entities entering the fan-out (deduped on type+name)</div>
     <div class="ents" id="entrow">
-      <span class="ent person" data-e>Michael Dempsey <span class="ty">· person</span></span>
-      <span class="ent person principal" data-e>Felix Kasiske <span class="ty">· principal</span></span>
-      <span class="ent person" data-e>Sarah Lindqvist <span class="ty">· person</span></span>
-      <span class="ent company" data-e>Acme <span class="ty">· company</span></span>
-      <span class="ent company" data-e>Northwind Logistics <span class="ty">· company</span></span>
-      <span class="ent project" data-e>Project Helios <span class="ty">· project</span></span>
+      <span class="ent person" data-e>Michael Dempsey <span class="ty">person</span></span>
+      <span class="ent person principal" data-e>Felix Kasiske <span class="ty">principal</span></span>
+      <span class="ent person" data-e>Sarah Lindqvist <span class="ty">person</span></span>
+      <span class="ent company" data-e>Acme <span class="ty">company</span></span>
+      <span class="ent company" data-e>Northwind Logistics <span class="ty">company</span></span>
+      <span class="ent project" data-e>Project Helios <span class="ty">project</span></span>
     </div>
     <p class="fillnote">Felix arrives twice — named in the To line and as the seeded principal — and
       <code>_dedup_entities()</code> merges them into one, carrying the address across.</p>
@@ -476,7 +477,7 @@ Michael Dempsey     → Michael Dempsey  (new)</pre></div>
   </p>
 
   <!-- ========================= ATTRIBUTES ========================= -->
-  <h2 id="s-attr">Stage 3 · Attributes (the frontmatter)</h2>
+  <h2 id="s-attr">Stage 3, Attributes (the frontmatter)</h2>
   <div class="stagebox">
     <h3><span class="agentno">3</span> AttributeAgent</h3>
     <p>
@@ -484,7 +485,7 @@ Michael Dempsey     → Michael Dempsey  (new)</pre></div>
       <code>FieldSpec</code> list, not per-type code. It fills a field <em>only if</em> the email states
       it; anything unstated stays <code>null</code> (or <code>[]</code> for list fields). No guessing.
     </p>
-    <div class="det">System prompt (verbatim · comprehend/agents/attribute.py)</div>
+    <div class="det">System prompt (verbatim, comprehend/agents/attribute.py)</div>
     <details class="promptbox">
       <summary>AttributeAgent.run() — field_lines / keys come from the type's FieldSpec</summary>
 <pre>From the email below, extract these facts about the {type_label}
@@ -520,7 +521,7 @@ EMAIL:
   </div>
 
   <!-- ========================= RELATIONSHIPS ========================= -->
-  <h2 id="s-rel">Stage 4 · Relationships (open inference)</h2>
+  <h2 id="s-rel">Stage 4, Relationships (open inference)</h2>
   <div class="stagebox">
     <h3><span class="agentno">4</span> RelationshipAgent</h3>
     <p>
@@ -529,7 +530,7 @@ EMAIL:
       rather than picking from a fixed list. Objects must come from the supplied candidate list
       <em>exactly as written</em>, so every edge lands on a real, canonical entity (no invented nodes).
     </p>
-    <div class="det">System prompt (verbatim · comprehend/agents/relationship.py)</div>
+    <div class="det">System prompt (verbatim, comprehend/agents/relationship.py)</div>
     <details class="promptbox">
       <summary>RelationshipAgent.run() — subject + object_lines filled per entity</summary>
 <pre>The subject is {subj_name} (a {subj_type}). From the email below,
@@ -574,7 +575,7 @@ EMAIL:
   </div>
 
   <!-- ========================= NORMALIZE ========================= -->
-  <h2 id="s-norm">Stage 5 · Normalize predicates</h2>
+  <h2 id="s-norm">Stage 5, Normalize predicates</h2>
   <div class="stagebox">
     <h3><span class="agentno">5</span> PredicateNormalizerAgent</h3>
     <p>
@@ -584,7 +585,7 @@ EMAIL:
       run). It's cheap by design: deterministic snake_case first, an <em>exact</em> registry hit reuses with
       <strong>no LLM call</strong>, and an in-process cache means each distinct wording costs at most one call.
     </p>
-    <div class="det">System prompt (verbatim · comprehend/agents/predicate_normalizer.py)</div>
+    <div class="det">System prompt (verbatim, comprehend/agents/predicate_normalizer.py)</div>
     <details class="promptbox">
       <summary>PredicateNormalizerAgent.run() — only fires when base ∉ registry and registry ≠ ∅</summary>
 <pre>You maintain a canonical vocabulary of relationship predicates
@@ -620,7 +621,7 @@ mentioned     → mentioned     (exact hit, no LLM)</pre></div>
   </div>
 
   <!-- ========================= DESCRIBE ========================= -->
-  <h2 id="s-desc">Stage 6 · Description (write or update)</h2>
+  <h2 id="s-desc">Stage 6, Description (write or update)</h2>
   <div class="stagebox">
     <h3><span class="agentno">6</span> DescriptionWriterAgent / DescriptionUpdaterAgent</h3>
     <p>
@@ -631,7 +632,7 @@ mentioned     → mentioned     (exact hit, no LLM)</pre></div>
     </p>
     <div class="det">DescriptionWriterAgent (new page) — verbatim</div>
     <details class="promptbox">
-      <summary>comprehend/agents/description.py · writer</summary>
+      <summary>comprehend/agents/description.py, writer</summary>
 <pre>Write a 2-3 sentence factual summary of the {entity_type}
 '{name}', based only on the email below. State only what the
 email supports. Return ONLY the summary text, no preamble.
@@ -641,7 +642,7 @@ EMAIL:
     </details>
     <div class="det">DescriptionUpdaterAgent (existing page) — verbatim</div>
     <details class="promptbox">
-      <summary>comprehend/agents/description.py · updater (defaults to no change)</summary>
+      <summary>comprehend/agents/description.py, updater (defaults to no change)</summary>
 <pre>Below is the current summary of '{name}' and a new email.
 
 Decide if the summary needs revising. It is EXPECTED and CORRECT
@@ -668,12 +669,12 @@ Project Helios.</pre></div>
   </div>
 
   <!-- ========================= TIMELINE ========================= -->
-  <h2 id="s-time">Stage 7 · Timeline entry</h2>
+  <h2 id="s-time">Stage 7, Timeline entry</h2>
   <div class="stagebox">
     <h3><span class="agentno">7</span> TimelineAgent</h3>
     <p>One concrete, dated sentence per email per entity. The date is the email's date (header), the
       sentence is the model's. Exact-duplicate entries are skipped and the list is kept sorted.</p>
-    <div class="det">System prompt (verbatim · comprehend/agents/timeline.py)</div>
+    <div class="det">System prompt (verbatim, comprehend/agents/timeline.py)</div>
     <details class="promptbox">
       <summary>TimelineAgent.run()</summary>
 <pre>Write a ONE-sentence timeline entry recording what the email
@@ -720,9 +721,9 @@ EMAIL:
 }</pre>
 
   <!-- ========================= GRAPH ========================= -->
-  <h2 id="s-graph">Stage 8 · Sync to the graph + index</h2>
+  <h2 id="s-graph">Stage 8, Sync to the graph + index</h2>
   <div class="stagebox">
-    <h3><span class="agentno">⇄</span> graph_sync · entities, edges, chunks</h3>
+    <h3><span class="agentno">⇄</span> graph_sync, entities, edges, chunks</h3>
     <p>
       After each page saves, <code>sync_page_to_graph()</code> (<code>ingestion/index/graph_sync.py</code>)
       derives three things:
@@ -771,7 +772,7 @@ EMAIL:
         <text class="elabel" data-el x="500" y="270">interested_in</text>
         <text class="elabel" data-el x="250" y="270">mentioned</text>
       </svg>
-      <div class="gnode person principal" data-n style="left:380px;top:60px">Felix Kasiske<span class="nt">principal · person</span></div>
+      <div class="gnode person principal" data-n style="left:380px;top:60px">Felix Kasiske<span class="nt">principal, person</span></div>
       <div class="gnode person" data-n style="left:170px;top:190px">Michael Dempsey<span class="nt">person</span></div>
       <div class="gnode person" data-n style="left:590px;top:190px">Sarah Lindqvist<span class="nt">person</span></div>
       <div class="gnode company" data-n style="left:110px;top:350px">Acme<span class="nt">company</span></div>
@@ -785,12 +786,12 @@ EMAIL:
   <h2>What one email cost — and left behind</h2>
   <div class="grid cols-3">
     <div class="card"><h4 style="margin-top:0">LLM calls</h4>
-      <p class="small" style="margin:0">1 translate · 1 identify · 0 canonicalize · then per-entity
+      <p class="small" style="margin:0">1 translate, 1 identify, 0 canonicalize, then per-entity
       (≈4 each × ~5 entities) ≈ <strong>22–32</strong> calls, most in parallel. Costed to
       <code>llm_usage_events</code>, attributed to the capturing mailbox.</p></div>
     <div class="card"><h4 style="margin-top:0">Rows written</h4>
-      <p class="small" style="margin:0"><strong>5</strong> brain pages · <strong>5</strong> entities ·
-      <strong>~7</strong> relationships (incl. 1 structural) · <strong>~10</strong> chunks+embeddings ·
+      <p class="small" style="margin:0"><strong>5</strong> brain pages, <strong>5</strong> entities,
+      <strong>~7</strong> relationships (incl. 1 structural), <strong>~10</strong> chunks+embeddings,
       provenance links per row.</p></div>
     <div class="card"><h4 style="margin-top:0">Idempotence</h4>
       <p class="small" style="margin:0">Re-running the same email re-asserts the same triples (deduped),

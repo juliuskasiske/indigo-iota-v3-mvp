@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>6 · The repo atlas — Indigo Iota explainer</title>
+<title>6. The repo atlas — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html" class="active">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html" class="active">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -49,7 +51,7 @@
   <div class="callout">How to use it: <strong>the left is navigation, the right is explanation.</strong> Click a
   folder name to open it (<code>+</code> → <code>−</code>) <em>and</em> see what it's for; click a file to read its
   one-line job in the pane. The heart of the system is <code>backend/src/ingestion/</code> — one process, four
-  phases (<strong>capture → triage → comprehend → index</strong>), exactly the chapters you've just read.</p>
+  phases (<strong>capture → triage → comprehend → index</strong>), exactly the chapters you've just read.</div>
 
   <div style="display:flex;gap:8px;margin:18px 0 0">
     <button id="expandAll" class="er-chip">Expand all</button>
@@ -67,14 +69,14 @@
 
       <details class="dir">
         <summary data-d="Top-level backend files: how to run it, pinned versions, and the human-editable tunables (price sheet, classifier thresholds)." data-path="backend/"><span class="tw"></span><span class="name">(top-level files)</span></summary>
-        <div class="file" data-d="How to run the backend, plus a handover note for the next developer." data-path="backend/README.md"><span class="leaf">·</span><span class="name">README.md · HANDOVER.md</span></div>
-        <div class="file" data-d="The real secrets/settings (never committed) and a safe template to copy from." data-path="backend/.env.example"><span class="leaf">·</span><span class="name">.env · .env.example</span></div>
+        <div class="file" data-d="How to run the backend, plus a handover note for the next developer." data-path="backend/README.md"><span class="leaf">·</span><span class="name">README.md, HANDOVER.md</span></div>
+        <div class="file" data-d="The real secrets/settings (never committed) and a safe template to copy from." data-path="backend/.env.example"><span class="leaf">·</span><span class="name">.env, .env.example</span></div>
         <div class="file" data-d="Pins the exact Python version the backend runs on." data-path="backend/.python-version"><span class="leaf">·</span><span class="name">.python-version</span></div>
-        <div class="file" data-d="Python libraries — runtime dependencies plus dev-only extras (tests, tooling)." data-path="backend/requirements.txt"><span class="leaf">·</span><span class="name">requirements.txt · requirements-dev.txt</span></div>
+        <div class="file" data-d="Python libraries — runtime dependencies plus dev-only extras (tests, tooling)." data-path="backend/requirements.txt"><span class="leaf">·</span><span class="name">requirements.txt, requirements-dev.txt</span></div>
         <div class="file" data-d="Test-runner settings for pytest." data-path="backend/pytest.ini"><span class="leaf">·</span><span class="name">pytest.ini</span></div>
         <div class="file" data-d="Config that exposes the brain as Claude-callable MCP tools." data-path="backend/.mcp.json"><span class="leaf">·</span><span class="name">.mcp.json</span></div>
         <div class="file" data-d="Tunable thresholds for the triage scope classifier." data-path="backend/classification.yaml"><span class="leaf">·</span><span class="name">classification.yaml</span></div>
-        <div class="file" data-d="The AI-model price sheet. Editing this is THE way to change prices — metering syncs it into the dated price history." data-path="backend/prices.yaml"><span class="leaf">·</span><span class="name">prices.yaml</span></div>
+        <div class="file" data-d="The AI-model price sheet. Editing this is the one place to change prices — metering syncs it into the dated price history." data-path="backend/prices.yaml"><span class="leaf">·</span><span class="name">prices.yaml</span></div>
         <div class="file" data-d="Cached corporate-identity data (logo/colours/font) for a seeded demo company." data-path="backend/data/ci.json"><span class="leaf">·</span><span class="name">data/ci.json</span></div>
       </details>
 
@@ -90,15 +92,33 @@
         <div class="file" data-d="The customer-defined ontology: entity_types + entity_type_fields + relationship_types (each with a one-line description the agents read), and question_entities for read-side provenance. entities.type / relationships.predicate are FK'd onto it." data-path="backend/migrations/tenant/0008_customer_ontology.sql"><span class="leaf">·</span><span class="name">0008_customer_ontology.sql</span></div>
         <div class="file" data-d="Moves brain pages off the local filesystem into the brain_pages JSONB table (the source of truth) so they survive container rebuilds and are shared across the api/sync services." data-path="backend/migrations/tenant/0009_brain_pages.sql"><span class="leaf">·</span><span class="name">0009_brain_pages.sql</span></div>
         <div class="file" data-d="comprehension_pages: the source-of-truth provenance link — which captured event created/updated which brain page, recorded even if graph sync is off." data-path="backend/migrations/tenant/0010_comprehension_pages.sql"><span class="leaf">·</span><span class="name">0010_comprehension_pages.sql</span></div>
+        <div class="file" data-d="capture_sources: the admin-managed list of which mailboxes (and which folder inside them) this workspace pulls from, moved out of an environment variable and into the database so it can be edited from the Admin Center. 0012 and 0013 refine the folder key and the mailbox flag." data-path="backend/migrations/tenant/0011_capture_sources.sql"><span class="leaf">·</span><span class="name">0011_capture_sources.sql → 0013_source_is_mailbox.sql</span></div>
+        <div class="file" data-d="The sign-off gate: no mail may be pulled until a named person has reviewed and approved the scope rules, and the approval is recorded. Plus the once-per-workspace stamp that marks the setup wizard finished." data-path="backend/migrations/tenant/0014_scope_approval.sql"><span class="leaf">·</span><span class="name">0014_scope_approval.sql, 0015_tenant_onboarding.sql</span></div>
+        <div class="file" data-d="Two resizes of the meaning-vector column, because the embedding model was swapped twice: to a multilingual 1024-dim model so a German email could be compared against English anchor phrases, then down to a 384-dim multilingual model that is a fifth of the size for the same job. Changing the model means re-embedding everything, which is why it is a migration and not a setting." data-path="backend/migrations/tenant/0016_multilingual_embeddings.sql"><span class="leaf">·</span><span class="name">0016_multilingual_embeddings.sql, 0018_resize_embeddings.sql</span></div>
+        <div class="file" data-d="A capture source may be an IMAP mailbox (any mail host, app password stored encrypted) or a shared Google Drive folder — not only a Microsoft Exchange mailbox. 0026 adds the per-source switch for whether Drive files are comprehended." data-path="backend/migrations/tenant/0017_imap_capture_sources.sql"><span class="leaf">·</span><span class="name">0017_imap_capture_sources.sql, 0025_gdrive_capture_sources.sql, 0026_drive_comprehend_toggle.sql</span></div>
+        <div class="file" data-d="Capture bookkeeping: counting messages already seen rather than re-storing them, and keeping the sender's display name and the recipient list on the captured event." data-path="backend/migrations/tenant/0019_capture_duplicates.sql"><span class="leaf">·</span><span class="name">0019_capture_duplicates.sql, 0020_captured_sender_name.sql, 0023_capture_recipients.sql</span></div>
+        <div class="file" data-d="A per-email trace of what the comprehend agents actually decided, kept so the Observability tab can show the reasoning after the fact. The stored entities show only the final result — this shows the working." data-path="backend/migrations/tenant/0021_comprehension_debug_trace.sql"><span class="leaf">·</span><span class="name">0021_comprehension_debug_trace.sql</span></div>
+        <div class="file" data-d="Drops the foreign key that forced every relationship predicate to already exist in the ontology, so a customer can loosen their vocabulary without a migration." data-path="backend/migrations/tenant/0022_drop_predicate_fkey.sql"><span class="leaf">·</span><span class="name">0022_drop_predicate_fkey.sql</span></div>
+        <div class="file" data-d="The per-workspace 'diligence' setting for comprehension — how thoroughly to read, which directly drives cost. One singleton row, mirroring triage_settings." data-path="backend/migrations/tenant/0024_comprehend_settings.sql"><span class="leaf">·</span><span class="name">0024_comprehend_settings.sql</span></div>
+        <div class="file" data-d="The Delivery tab's to-do pool: what the brain thinks each member must act on in the next day, plus its suggestions and the ones a user has dismissed." data-path="backend/migrations/tenant/0027_delivery_todos.sql"><span class="leaf">·</span><span class="name">0027_delivery_todos.sql → 0029_delivery_dismissed.sql</span></div>
+        <div class="file" data-d="Where the diagnosis layer begins. swarm_runs is one start-to-stop diagnosis run; agent_events is the append-only activity log behind the live feed." data-path="backend/migrations/tenant/0030_agent_swarm.sql"><span class="leaf">·</span><span class="name">0030_agent_swarm.sql</span></div>
+        <div class="file" data-d="objective_function: the single row holding the ranked levers the agents optimise for, plus free-text context." data-path="backend/migrations/tenant/0031_objective_function.sql"><span class="leaf">·</span><span class="name">0031_objective_function.sql</span></div>
+        <div class="file" data-d="The big one. Turns the objective into a time-bound, measurable program (metric, recurring or one-off, baseline, target, deadline, run-rate year, cadence, and the one-sentence headline), and makes the hypothesis tree first-class rows: hypothesis_nodes, hypothesis_evidence, initiative_cards. Before this the tree was replayed from the log on every read, which cannot carry reasoning or a card." data-path="backend/migrations/tenant/0032_objective_program_and_tree.sql"><span class="leaf">·</span><span class="name">0032_objective_program_and_tree.sql</span></div>
+        <div class="file" data-d="Freezes the objective onto the run that was scored against it. Without this, editing the target later silently rewrites what a finished run is claimed to have covered." data-path="backend/migrations/tenant/0033_run_objective_snapshot.sql"><span class="leaf">·</span><span class="name">0033_run_objective_snapshot.sql</span></div>
+        <div class="file" data-d="node_interventions: human steering. One row per act of review — reject a box with a reason, or comment on it — plus the reason copied onto the node itself so the agents building a replacement are told what not to repeat." data-path="backend/migrations/tenant/0034_node_interventions.sql"><span class="leaf">·</span><span class="name">0034_node_interventions.sql</span></div>
+        <div class="file" data-d="A correction, not a feature. 0034 let a deleted node take its review comments with it, so rebuilding a branch quietly destroyed every rejection reason underneath. The comment now outlives the box, carrying a copy of what that box said." data-path="backend/migrations/tenant/0035_keep_intervention_history.sql"><span class="leaf">·</span><span class="name">0035_keep_intervention_history.sql</span></div>
       </details>
 
       <details class="dir">
-        <summary data-d="Tooling, sample data, and tests that sit alongside the source." data-path="backend/"><span class="tw"></span><span class="name">scripts/ · fixtures/ · brain_pages/ · tests/</span></summary>
+        <summary data-d="Tooling, sample data, and tests that sit alongside the source." data-path="backend/"><span class="tw"></span><span class="name">scripts/, fixtures/, brain_pages/, tests/</span></summary>
         <div class="file" data-d="Reset the demo database to a known-good state." data-path="backend/scripts/reinitialize.sh"><span class="leaf">·</span><span class="name">scripts/reinitialize.sh</span></div>
         <div class="file" data-d="Grant Iota access to one specific Microsoft 365 mailbox (least-privilege App Access Policy)." data-path="backend/scripts/application-access-policy.ps1"><span class="leaf">·</span><span class="name">scripts/application-access-policy.ps1</span></div>
         <div class="file" data-d="Example brain pages and a sample Graph delta response used by tests + the seeder fixture." data-path="backend/fixtures/"><span class="leaf">·</span><span class="name">fixtures/*.json</span></div>
         <div class="file" data-d="Committed seed brain pages — one JSON per entity, loaded into the brain_pages table on reinit (demo only; the live store is Postgres)." data-path="backend/brain_pages/"><span class="leaf">·</span><span class="name">brain_pages/{persons,companies,projects}/*.json</span></div>
         <div class="file" data-d="Automated tests for the triage scope classifier (the trust boundary)." data-path="backend/tests/"><span class="leaf">·</span><span class="name">tests/test_classify_*.py</span></div>
+        <div class="file" data-d="Tests for the pure arithmetic that must never be wrong: what the real target is for each way of stating it (an absolute number, a percentage uplift, a multiple of today), including when there is no baseline to multiply." data-path="backend/tests/test_objective_target.py"><span class="leaf">·</span><span class="name">tests/test_objective_target.py</span></div>
+        <div class="file" data-d="Tests that the diagnosis agents' answers are read correctly even when the model returns something slightly malformed — JSON wrapped in chatter, a number written as a string, a missing field. Every agent has to degrade into a legible half-filled box rather than a crash." data-path="backend/tests/test_swarm_parsing.py"><span class="leaf">·</span><span class="name">tests/test_swarm_parsing.py</span></div>
+        <div class="file" data-d="The Nordwind Analytics demo corpus: a fictional sales-analytics company as 27 emails and 6 documents, written so that reading them produces a knowledge graph with real value leaks buried in it (discounting past the cap, security reviews stalling deals, expansion paying less commission than new business). seed_demo.py loads it through the ordinary pipeline." data-path="backend/fixtures/demo_nordwind/"><span class="leaf">·</span><span class="name">fixtures/demo_nordwind/</span></div>
       </details>
 
       <details class="dir" open>
@@ -146,6 +166,14 @@
           <div class="file" data-d="Read/write helpers for the relationships table (add a triple, fetch by entity, wipe a page's relationships)." data-path="backend/src/db/relationships.py"><span class="leaf">·</span><span class="name">relationships.py</span></div>
           <div class="file" data-d="Read/write helpers for the chunks table, including the hybrid vector + keyword search SQL." data-path="backend/src/db/chunks.py"><span class="leaf">·</span><span class="name">chunks.py</span></div>
           <div class="file" data-d="Read/write helpers for the questions table (save a Q&A with frozen citations)." data-path="backend/src/db/questions.py"><span class="leaf">·</span><span class="name">questions.py</span></div>
+          <div class="file" data-d="The objective as a Python object. Reads and writes the single objective_function row, works out the real target from the basis (absolute, percent uplift, or multiple of the baseline) in ONE place so the screen and the agents can never disagree, and renders the plain-English read-back of the program." data-path="backend/src/db/objective.py"><span class="leaf">·</span><span class="name">objective.py</span></div>
+          <div class="file" data-d="Everything the hypothesis tree needs: add a box, attach evidence, write a card, read the whole tree back in one query, mark a subtree rejected, rebuild a subtree, record a review and settle it, and total the initiative values against the target." data-path="backend/src/db/hypothesis.py"><span class="leaf">·</span><span class="name">hypothesis.py</span></div>
+        </details>
+
+        <details class="dir" open>
+          <summary data-d="THE DIAGNOSIS ENGINE — the layer that reads the finished brain and builds an argument about where value is leaking. Two files only: the sequence, and the shared model client it calls through." data-path="backend/src/agents/"><span class="tw"></span><span class="name">agents/</span></summary>
+          <div class="file" data-d="The whole diagnosis run, in one file. Holds the seven agents' prompts (framer, decomposition, initiative, validator, planning, sizer, judge), the caps that bound how big and expensive a run may get, the per-box fact retrieval, the recursive tree build, and the two human-review paths (reject-and-replace, and comment-and-revise). Roughly: read the objective → compress it to a sentence → split it into non-overlapping branches → turn bottom branches into initiatives → check, plan, size and judge each one." data-path="backend/src/agents/swarm.py"><span class="leaf">·</span><span class="name">swarm.py</span></div>
+          <div class="file" data-d="One shared, reused connection to the AI service for the whole diagnosis layer, with the parts that are easy to forget built in: check the workspace has credit BEFORE the call, retry the failures worth retrying, cap how many calls run at once, and record what each call cost afterwards. It also refuses an empty answer loudly instead of returning nothing — a reasoning model that spends its whole budget thinking returns no text at all, and that used to fail silently." data-path="backend/src/agents/llm.py"><span class="leaf">·</span><span class="name">llm.py</span></div>
         </details>
 
         <details class="dir" open>
@@ -155,7 +183,7 @@
           <div class="file" data-d="CLI for the connector: capture a mailbox, then optionally comprehend (python -m src.ingestion)." data-path="backend/src/ingestion/__main__.py"><span class="leaf">·</span><span class="name">__main__.py</span></div>
 
           <details class="dir">
-            <summary data-d="① CAPTURE — pull material in. No AI: ask the source (Microsoft Graph or IMAP) what changed, normalise it, store the raw copy." data-path="backend/src/ingestion/capture/"><span class="tw"></span><span class="name">capture/</span></summary>
+            <summary data-d="① Capture — pull material in. No AI: ask the source (Microsoft Graph or IMAP) what changed, normalise it, store the raw copy." data-path="backend/src/ingestion/capture/"><span class="tw"></span><span class="name">capture/</span></summary>
             <div class="file" data-d="The capture orchestrator (ingest_mailbox): pull from the source (Graph delta or IMAP) → triage gate → captured_events, with run logging + cursor handling." data-path="backend/src/ingestion/capture/mail.py"><span class="leaf">·</span><span class="name">mail.py</span></div>
             <div class="file" data-d="The Microsoft Graph mail client (app-only certificate auth); returns changed messages + the next delta link." data-path="backend/src/ingestion/capture/graph_client.py"><span class="leaf">·</span><span class="name">graph_client.py</span></div>
             <div class="file" data-d="The IMAP mail client — the IMAP-world twin of graph_client.py, for customers who are NOT on Microsoft 365 (a custom mail host)." data-path="backend/src/ingestion/capture/imap_client.py"><span class="leaf">·</span><span class="name">imap_client.py</span></div>
@@ -165,13 +193,13 @@
           </details>
 
           <details class="dir">
-            <summary data-d="② TRIAGE — is this in scope? No AI: score each captured item against the admin-defined buckets and keep only what's in scope." data-path="backend/src/ingestion/triage/"><span class="tw"></span><span class="name">triage/</span></summary>
+            <summary data-d="② Triage — is this in scope? No AI: score each captured item against the admin-defined buckets and keep only what's in scope." data-path="backend/src/ingestion/triage/"><span class="tw"></span><span class="name">triage/</span></summary>
             <div class="file" data-d="The embedding-only 'is this in scope?' classifier — the trust boundary that decides include vs exclude." data-path="backend/src/ingestion/triage/classify.py"><span class="leaf">·</span><span class="name">classify.py</span></div>
             <div class="file" data-d="Loads the admin-editable scope definitions (buckets + safety margin) the classifier scores against." data-path="backend/src/ingestion/triage/scope_store.py"><span class="leaf">·</span><span class="name">scope_store.py</span></div>
           </details>
 
           <details class="dir">
-            <summary data-d="③ COMPREHEND — text → pages → graph. The metered AI work: agents read each kept item and write the brain page (the source of truth), then derive its entities and relationships." data-path="backend/src/ingestion/comprehend/"><span class="tw"></span><span class="name">comprehend/</span></summary>
+            <summary data-d="③ Comprehend — text → pages → graph. The metered AI work: agents read each kept item and write the brain page (the source of truth), then derive its entities and relationships." data-path="backend/src/ingestion/comprehend/"><span class="tw"></span><span class="name">comprehend/</span></summary>
             <div class="file" data-d="The comprehend orchestrator (ComprehendPipeline): identify → canonicalize → per-entity agent fan-out, strictly sequential across items." data-path="backend/src/ingestion/comprehend/pipeline.py"><span class="leaf">·</span><span class="name">pipeline.py</span></div>
             <div class="file" data-d="The BrainPage class: an in-memory entity page (frontmatter + description + timeline); persistence to the brain_pages JSONB table lives in db/brain_pages.py." data-path="backend/src/ingestion/comprehend/page.py"><span class="leaf">·</span><span class="name">page.py</span></div>
             <div class="file" data-d="Fuzzy-matches a raw mention onto known canonical names so 'RPX Optimization GmbH' doesn't spawn a duplicate of 'RPX Optimization'." data-path="backend/src/ingestion/comprehend/canonicalize.py"><span class="leaf">·</span><span class="name">canonicalize.py</span></div>
@@ -180,15 +208,15 @@
               <div class="file" data-d="The Agent base class — the shared, metered LLM-call machinery (_call enforces the credit limit, then records usage)." data-path="backend/src/ingestion/comprehend/agents/base.py"><span class="leaf">·</span><span class="name">base.py</span></div>
               <div class="file" data-d="Reads the whole item once and lists which entities (people/companies/projects) it mentions." data-path="backend/src/ingestion/comprehend/agents/identifier.py"><span class="leaf">·</span><span class="name">identifier.py</span></div>
               <div class="file" data-d="TranslatorAgent — renders non-English (e.g. German) email into English before comprehension, since the brain is kept English-only." data-path="backend/src/ingestion/comprehend/agents/translator.py"><span class="leaf">·</span><span class="name">translator.py</span></div>
-              <div class="file" data-d="One frontmatter agent per entity type — reads plain factual fields for a person, company, or project." data-path="backend/src/ingestion/comprehend/agents/person.py"><span class="leaf">·</span><span class="name">person.py · company.py · project.py</span></div>
+              <div class="file" data-d="One frontmatter agent per entity type — reads plain factual fields for a person, company, or project." data-path="backend/src/ingestion/comprehend/agents/person.py"><span class="leaf">·</span><span class="name">person.py, company.py, project.py</span></div>
               <div class="file" data-d="Extracts a dated timeline entry for the item." data-path="backend/src/ingestion/comprehend/agents/timeline.py"><span class="leaf">·</span><span class="name">timeline.py</span></div>
-              <div class="file" data-d="Fields that need reasoning, not just copying: the description writer/updater and the relationship/status judgment." data-path="backend/src/ingestion/comprehend/agents/judgment.py"><span class="leaf">·</span><span class="name">description.py · judgment.py</span></div>
+              <div class="file" data-d="Fields that need reasoning, not just copying: the description writer/updater and the relationship/status judgment." data-path="backend/src/ingestion/comprehend/agents/judgment.py"><span class="leaf">·</span><span class="name">description.py, judgment.py</span></div>
               <div class="file" data-d="Resolves raw mentions to canonical entity names (merges duplicates) during identification." data-path="backend/src/ingestion/comprehend/agents/canonicalizer.py"><span class="leaf">·</span><span class="name">canonicalizer.py</span></div>
             </details>
           </details>
 
           <details class="dir">
-            <summary data-d="④ INDEX — make it findable. Write the entity + relationship rows, then chunk + embed each page for hybrid search." data-path="backend/src/ingestion/index/"><span class="tw"></span><span class="name">index/</span></summary>
+            <summary data-d="④ Index — make it findable. Write the entity + relationship rows, then chunk + embed each page for hybrid search." data-path="backend/src/ingestion/index/"><span class="tw"></span><span class="name">index/</span></summary>
             <div class="file" data-d="Writes a brain page's own entity plus its outgoing relationships into the graph (idempotent), and triggers chunking." data-path="backend/src/ingestion/index/graph_sync.py"><span class="leaf">·</span><span class="name">graph_sync.py</span></div>
             <div class="file" data-d="Chops a brain page into searchable passages (description, timeline, …) ready for embedding + indexing." data-path="backend/src/ingestion/index/chunker.py"><span class="leaf">·</span><span class="name">chunker.py</span></div>
             <div class="file" data-d="Local text→vector embeddings (fastembed) — no data leaves the machine, and it's free." data-path="backend/src/ingestion/index/embeddings.py"><span class="leaf">·</span><span class="name">embeddings.py</span></div>
@@ -202,7 +230,7 @@
         </details>
 
         <details class="dir">
-          <summary data-d="Customers & setup: provisioning a tenant's own database, and the onboarding CLI for Microsoft consent + SSO wiring." data-path="backend/src/"><span class="tw"></span><span class="name">tenancy/ · onboarding/</span></summary>
+          <summary data-d="Customers & setup: provisioning a tenant's own database, and the onboarding CLI for Microsoft consent + SSO wiring." data-path="backend/src/"><span class="tw"></span><span class="name">tenancy/, onboarding/</span></summary>
           <div class="file" data-d="Creates and manages customer tenants (database-per-tenant); resolves a slug to its brain DB name." data-path="backend/src/tenancy/provision.py"><span class="leaf">·</span><span class="name">tenancy/provision.py</span></div>
           <div class="file" data-d="CLI for admin-consent URLs, SSO wiring, and an end-to-end SSO check." data-path="backend/src/onboarding/__main__.py"><span class="leaf">·</span><span class="name">onboarding/__main__.py</span></div>
         </details>
@@ -227,10 +255,10 @@
 
       <details class="dir">
         <summary data-d="Build setup + brand docs: package manifests, framework config, and the style/tech-stack PDFs." data-path="frontend/"><span class="tw"></span><span class="name">(config &amp; docs)</span></summary>
-        <div class="file" data-d="JavaScript libraries and their exact pinned versions." data-path="frontend/package.json"><span class="leaf">·</span><span class="name">package.json · package-lock.json</span></div>
-        <div class="file" data-d="Build config for Next.js, TypeScript, and CSS." data-path="frontend/next.config.ts"><span class="leaf">·</span><span class="name">next.config.ts · tsconfig.json · postcss.config.mjs</span></div>
+        <div class="file" data-d="JavaScript libraries and their exact pinned versions." data-path="frontend/package.json"><span class="leaf">·</span><span class="name">package.json, package-lock.json</span></div>
+        <div class="file" data-d="Build config for Next.js, TypeScript, and CSS." data-path="frontend/next.config.ts"><span class="leaf">·</span><span class="name">next.config.ts, tsconfig.json, postcss.config.mjs</span></div>
         <div class="file" data-d="Pins the Node.js version." data-path="frontend/.nvmrc"><span class="leaf">·</span><span class="name">.nvmrc</span></div>
-        <div class="file" data-d="How to run, how to deploy, and notes for AI assistants." data-path="frontend/README.md"><span class="leaf">·</span><span class="name">README.md · DEPLOY.md · AGENTS.md · CLAUDE.md</span></div>
+        <div class="file" data-d="How to run, how to deploy, and notes for AI assistants." data-path="frontend/README.md"><span class="leaf">·</span><span class="name">README.md, DEPLOY.md, AGENTS.md, CLAUDE.md</span></div>
         <div class="file" data-d="The brand style guide + tech-stack docs, and the scripts that build them." data-path="frontend/docs/"><span class="leaf">·</span><span class="name">docs/*.pdf + build-*.py</span></div>
         <div class="file" data-d="An edge function used by the hosting platform." data-path="frontend/functions/_middleware.js"><span class="leaf">·</span><span class="name">functions/_middleware.js</span></div>
         <div class="file" data-d="Static icons shipped with the site." data-path="frontend/public/"><span class="leaf">·</span><span class="name">public/*.svg</span></div>
@@ -245,7 +273,7 @@
         <div class="file" data-d="The Home dashboard (/)." data-path="frontend/src/app/page.tsx"><span class="leaf">·</span><span class="name">page.tsx</span></div>
         <div class="file" data-d="The live Admin Center (/admin) — the first-run setup wizard, then the steady-state dashboard (credits, usage, mail sync, scope, team, brain)." data-path="frontend/src/app/admin/page.tsx"><span class="leaf">·</span><span class="name">admin/page.tsx</span></div>
         <div class="file" data-d="The owner-only Control Tower (/control): provision tenants, browse databases, the onboarding + auth + codebase guides, and platform usage." data-path="frontend/src/app/control/page.tsx"><span class="leaf">·</span><span class="name">control/page.tsx</span></div>
-        <div class="file" data-d="Native-auth pages: accept an invite (set first password + enrol an authenticator) and reset a forgotten password." data-path="frontend/src/app/accept-invite/page.tsx"><span class="leaf">·</span><span class="name">accept-invite/ · reset-password/page.tsx</span></div>
+        <div class="file" data-d="Native-auth pages: accept an invite (set first password + enrol an authenticator) and reset a forgotten password." data-path="frontend/src/app/accept-invite/page.tsx"><span class="leaf">·</span><span class="name">accept-invite/, reset-password/page.tsx</span></div>
         <div class="file" data-d="The live Ask / Q&A page (/ask) — answer + cited sources + the brain graph." data-path="frontend/src/app/ask/page.tsx"><span class="leaf">·</span><span class="name">ask/page.tsx</span></div>
         <div class="file" data-d="The project list, new-project form, single-project view, and weekly check-in digest." data-path="frontend/src/app/projects/"><span class="leaf">·</span><span class="name">projects/{·,new,view,check-in}/page.tsx</span></div>
         <div class="file" data-d="Workspace settings." data-path="frontend/src/app/settings/page.tsx"><span class="leaf">·</span><span class="name">settings/page.tsx</span></div>
@@ -257,48 +285,59 @@
         <details class="dir">
           <summary data-d="The Admin Center: the first-run wizard, the steady-state dashboard shell, and the per-step panels." data-path="frontend/src/components/admin/"><span class="tw"></span><span class="name">admin/</span></summary>
           <div class="file" data-d="The first-run six-step setup wizard (Team → Connect → Credits → Triage → Brain → Activate), shown until a workspace is onboarded." data-path="frontend/src/components/admin/onboarding-wizard.tsx"><span class="leaf">·</span><span class="name">onboarding-wizard.tsx</span></div>
-          <div class="file" data-d="The steady-state Admin Center shell (tabs: Overview, Capture, Triage, Brain, Team, Usage) shown after onboarding." data-path="frontend/src/components/admin/admin-dashboard.tsx"><span class="leaf">·</span><span class="name">admin-dashboard.tsx</span></div>
+          <div class="file" data-d="The steady-state Admin Center shell shown after onboarding. The left sidebar in three parts: Overview (the diagnosis board) on top, then the four numbered engagement steps (Objectives, Context Engine, Interview, Agent Swarm), then the admin-only sections (Account, Observability, Triage, Ontology, Team, Usage)." data-path="frontend/src/components/admin/admin-dashboard.tsx"><span class="leaf">·</span><span class="name">admin-dashboard.tsx</span></div>
           <div class="file" data-d="The sign-in card — Microsoft SSO, native email + password + authenticator, and a dev shortcut. The start of Flow A." data-path="frontend/src/components/admin/sign-in-card.tsx"><span class="leaf">·</span><span class="name">sign-in-card.tsx</span></div>
           <div class="file" data-d="Invite and manage team members and their roles (admin / consultant / viewer)." data-path="frontend/src/components/admin/members-panel.tsx"><span class="leaf">·</span><span class="name">members-panel.tsx</span></div>
           <div class="file" data-d="Connect step: add the mailboxes to pull — Microsoft or IMAP — and generate the Exchange access-policy command." data-path="frontend/src/components/admin/capture-sources-panel.tsx"><span class="leaf">·</span><span class="name">capture-sources-panel.tsx</span></div>
           <div class="file" data-d="Credit balance + the 'add credits' control — the start of Flow E (money in)." data-path="frontend/src/components/admin/credits-panel.tsx"><span class="leaf">·</span><span class="name">credits-panel.tsx</span></div>
           <div class="file" data-d="The rebuilt Usage view: ingestion-vs-Q&A spend over time, broken down per team member, in $ or tokens." data-path="frontend/src/components/admin/spend-by-user-panel.tsx"><span class="leaf">·</span><span class="name">spend-by-user-panel.tsx</span></div>
           <div class="file" data-d="Mailbox sync status + recent capture runs." data-path="frontend/src/components/admin/ingestion-panel.tsx"><span class="leaf">·</span><span class="name">ingestion-panel.tsx</span></div>
-          <div class="file" data-d="Triage: review the scope categories and sign them off (the hard gate), plus the editable scope rules." data-path="frontend/src/components/admin/scope-approval-panel.tsx"><span class="leaf">·</span><span class="name">scope-approval-panel.tsx · scope-panel.tsx</span></div>
-          <div class="file" data-d="Brain step: confirm the entity types (ontology) and add optional seed entities." data-path="frontend/src/components/admin/ontology-panel.tsx"><span class="leaf">·</span><span class="name">ontology-panel.tsx · starter-entities-panel.tsx</span></div>
-          <div class="file" data-d="The legacy spend chart + the spend-caution note (the live Usage tab now uses spend-by-user-panel)." data-path="frontend/src/components/admin/usage-panel.tsx"><span class="leaf">·</span><span class="name">usage-panel.tsx · caution-panel.tsx</span></div>
+          <div class="file" data-d="Observability: the cost and token trace per source coming in and per question going out, including the per-email record of what the comprehend agents actually decided." data-path="frontend/src/components/admin/observability-panel.tsx"><span class="leaf">·</span><span class="name">observability-panel.tsx</span></div>
+          <div class="file" data-d="The Context Engine's Sources view: which mailboxes and folders feed this workspace, drawn as a network with what has come in from each." data-path="frontend/src/components/admin/sources-network.tsx"><span class="leaf">·</span><span class="name">sources-network.tsx</span></div>
+          <div class="file" data-d="Triage: review the scope categories and sign them off (the hard gate), plus the editable scope rules." data-path="frontend/src/components/admin/scope-approval-panel.tsx"><span class="leaf">·</span><span class="name">scope-approval-panel.tsx, scope-panel.tsx</span></div>
+          <div class="file" data-d="Brain step: confirm the entity types (ontology) and add optional seed entities." data-path="frontend/src/components/admin/ontology-panel.tsx"><span class="leaf">·</span><span class="name">ontology-panel.tsx, starter-entities-panel.tsx</span></div>
+          <div class="file" data-d="The legacy spend chart + the spend-caution note (the live Usage tab now uses spend-by-user-panel)." data-path="frontend/src/components/admin/usage-panel.tsx"><span class="leaf">·</span><span class="name">usage-panel.tsx, caution-panel.tsx</span></div>
+        </details>
+
+        <details class="dir">
+          <summary data-d="The four numbered engagement steps and the diagnosis board — the front end of the diagnosis layer." data-path="frontend/src/components/steps/"><span class="tw"></span><span class="name">steps/</span></summary>
+          <div class="file" data-d="The Objectives screen: the ranked levers, the program fields (metric, baseline, target, deadline, run-rate year, cadence), the plain-English read-back computed in the browser, and the one-sentence objective with its regenerate-and-edit control. Read-only for anyone who is not an admin, with a line saying why." data-path="frontend/src/components/steps/align-panel.tsx"><span class="leaf">·</span><span class="name">align-panel.tsx</span></div>
+          <div class="file" data-d="The Overview board: the run status strip, the coverage bar, the canvas, and the activity feed underneath. Polls the backend while a run is going." data-path="frontend/src/components/steps/hypothesis-tree.tsx"><span class="leaf">·</span><span class="name">hypothesis-tree.tsx</span></div>
+          <div class="file" data-d="The board itself: boxes and arrows, drag to pan, pinch to zoom, fit-to-view, hover to light up the whole path back to the objective, click to open the detail panel with the two review actions at the top." data-path="frontend/src/components/steps/hypothesis-canvas.tsx"><span class="leaf">·</span><span class="name">hypothesis-canvas.tsx</span></div>
+          <div class="file" data-d="Where each box goes. About sixty lines of arithmetic, no charting library: leaves are stacked one after another, then every parent is placed at the midpoint of its own children, which is what gives an issue tree its shape. Also draws the curved connector between two boxes." data-path="frontend/src/components/steps/tree-layout.ts"><span class="leaf">·</span><span class="name">tree-layout.ts</span></div>
+          <div class="file" data-d="Start and stop a diagnosis run, and show what the agents are doing right now." data-path="frontend/src/components/steps/agent-swarm-panel.tsx"><span class="leaf">·</span><span class="name">agent-swarm-panel.tsx</span></div>
         </details>
         <details class="dir">
           <summary data-d="The owner-only Control Tower panels (/control)." data-path="frontend/src/components/control/"><span class="tw"></span><span class="name">control/</span></summary>
           <div class="file" data-d="The owner passphrase sign-in for the Control Tower." data-path="frontend/src/components/control/owner-sign-in.tsx"><span class="leaf">·</span><span class="name">owner-sign-in.tsx</span></div>
-          <div class="file" data-d="Provision a customer workspace and walk each tenant through onboarding (tenant-onboarding.tsx is the per-tenant setup card)." data-path="frontend/src/components/control/tenants-panel.tsx"><span class="leaf">·</span><span class="name">tenants-panel.tsx · tenant-onboarding.tsx</span></div>
+          <div class="file" data-d="Provision a customer workspace and walk each tenant through onboarding (tenant-onboarding.tsx is the per-tenant setup card)." data-path="frontend/src/components/control/tenants-panel.tsx"><span class="leaf">·</span><span class="name">tenants-panel.tsx, tenant-onboarding.tsx</span></div>
           <div class="file" data-d="Whether the shared Microsoft connector credentials are present on the server (present/absent only, never the values)." data-path="frontend/src/components/control/connector-status-panel.tsx"><span class="leaf">·</span><span class="name">connector-status-panel.tsx</span></div>
           <div class="file" data-d="Browse the databases behind every workspace — a read-only inspector." data-path="frontend/src/components/control/db-browser-panel.tsx"><span class="leaf">·</span><span class="name">db-browser-panel.tsx</span></div>
           <div class="file" data-d="Platform-wide raw usage (before customer markup), per workspace and per member." data-path="frontend/src/components/control/platform-usage-panel.tsx"><span class="leaf">·</span><span class="name">platform-usage-panel.tsx</span></div>
-          <div class="file" data-d="The Guide tab's three docs: the onboarding runbook, the from-scratch authentication explainer, and this codebase explainer." data-path="frontend/src/components/control/onboarding-guide-panel.tsx"><span class="leaf">·</span><span class="name">onboarding-guide-panel.tsx · auth-basics-panel.tsx</span></div>
+          <div class="file" data-d="The Guide tab's three docs: the onboarding runbook, the from-scratch authentication explainer, and this codebase explainer." data-path="frontend/src/components/control/onboarding-guide-panel.tsx"><span class="leaf">·</span><span class="name">onboarding-guide-panel.tsx, auth-basics-panel.tsx</span></div>
         </details>
         <details class="dir">
           <summary data-d="The tabs inside one project." data-path="frontend/src/components/project-tabs/"><span class="tw"></span><span class="name">project-tabs/</span></summary>
-          <div class="file" data-d="Overview and people/team tabs." data-path="frontend/src/components/project-tabs/overview-tab.tsx"><span class="leaf">·</span><span class="name">overview-tab.tsx · team-tab.tsx</span></div>
-          <div class="file" data-d="Workstreams and deliverables tabs." data-path="frontend/src/components/project-tabs/workstream-tab.tsx"><span class="leaf">·</span><span class="name">workstream-tab.tsx · deliverable-tab.tsx</span></div>
+          <div class="file" data-d="Overview and people/team tabs." data-path="frontend/src/components/project-tabs/overview-tab.tsx"><span class="leaf">·</span><span class="name">overview-tab.tsx, team-tab.tsx</span></div>
+          <div class="file" data-d="Workstreams and deliverables tabs." data-path="frontend/src/components/project-tabs/workstream-tab.tsx"><span class="leaf">·</span><span class="name">workstream-tab.tsx, deliverable-tab.tsx</span></div>
           <div class="file" data-d="The knowledge-graph tab." data-path="frontend/src/components/project-tabs/graph-tab.tsx"><span class="leaf">·</span><span class="name">graph-tab.tsx</span></div>
         </details>
         <div class="file" data-d="The big composed view of one project." data-path="frontend/src/components/project-view.tsx"><span class="leaf">·</span><span class="name">project-view.tsx</span></div>
         <div class="file" data-d="The interactive 3-D graph visual (force-graph)." data-path="frontend/src/components/knowledge-graph-3d.tsx"><span class="leaf">·</span><span class="name">knowledge-graph-3d.tsx</span></div>
         <div class="file" data-d="The check-in digest widget." data-path="frontend/src/components/morning-check-in.tsx"><span class="leaf">·</span><span class="name">morning-check-in.tsx</span></div>
         <div class="file" data-d="Demo panels (partner briefing, team onboarding)." data-path="frontend/src/components/panels/"><span class="leaf">·</span><span class="name">panels/*.tsx</span></div>
-        <div class="file" data-d="The guided new-project setup flow and the delete-a-project control." data-path="frontend/src/components/initialize-project-flow.tsx"><span class="leaf">·</span><span class="name">initialize-project-flow.tsx · delete-project-control.tsx</span></div>
-        <div class="file" data-d="The customer logo, the Iota wordmark, and 'N hours ago'-style timestamps." data-path="frontend/src/components/client-logo.tsx"><span class="leaf">·</span><span class="name">client-logo.tsx · iota-logo.tsx · relative-time.tsx</span></div>
+        <div class="file" data-d="The guided new-project setup flow and the delete-a-project control." data-path="frontend/src/components/initialize-project-flow.tsx"><span class="leaf">·</span><span class="name">initialize-project-flow.tsx, delete-project-control.tsx</span></div>
+        <div class="file" data-d="The customer logo, the Iota wordmark, and 'N hours ago'-style timestamps." data-path="frontend/src/components/client-logo.tsx"><span class="leaf">·</span><span class="name">client-logo.tsx, iota-logo.tsx, relative-time.tsx</span></div>
         <div class="file" data-d="Shared building blocks for both Usage panels — the range/metric controls, stat cards, the comparison chart, and the formatters." data-path="frontend/src/components/usage/usage-shared.tsx"><span class="leaf">·</span><span class="name">usage/usage-shared.tsx</span></div>
-        <div class="file" data-d="The native-auth password fields, and the Ask page's brain graph." data-path="frontend/src/components/auth/password-fields.tsx"><span class="leaf">·</span><span class="name">auth/password-fields.tsx · ask/brain-graph.tsx</span></div>
-        <div class="file" data-d="Low-level design-system pieces (button, card, dialog, input, tabs…)." data-path="frontend/src/components/ui/"><span class="leaf">·</span><span class="name">ui/*.tsx</span></div>
+        <div class="file" data-d="The native-auth password fields, and the Ask page's brain graph." data-path="frontend/src/components/auth/password-fields.tsx"><span class="leaf">·</span><span class="name">auth/password-fields.tsx, ask/brain-graph.tsx</span></div>
+        <div class="file" data-d="Low-level design-system pieces (button, card, dialog, input, tabs, select, sheet…). The sheet is what the diagnosis board opens a box into, deliberately configured not to block the page behind it." data-path="frontend/src/components/ui/"><span class="leaf">·</span><span class="name">ui/*.tsx</span></div>
       </details>
 
       <details class="dir">
         <summary data-d="The data wiring between the browser and the backend." data-path="frontend/src/lib/"><span class="tw"></span><span class="name">src/lib/</span></summary>
-        <div class="file" data-d="The live API client — every real HTTP call to the backend (ask, addCredits, usage, credits, scope…)." data-path="frontend/src/lib/api.ts"><span class="leaf">·</span><span class="name">api.ts</span></div>
+        <div class="file" data-d="The live API client — every real HTTP call to the backend (ask, addCredits, usage, credits, scope, objective, swarmTree, discardNode, feedbackNode…), plus the TypeScript shapes those calls return." data-path="frontend/src/lib/api.ts"><span class="leaf">·</span><span class="name">api.ts</span></div>
         <div class="file" data-d="The in-browser demo store of projects." data-path="frontend/src/lib/store/projects-store.tsx"><span class="leaf">·</span><span class="name">store/projects-store.tsx</span></div>
-        <div class="file" data-d="Canned demo data and its type definitions." data-path="frontend/src/lib/mock/data.ts"><span class="leaf">·</span><span class="name">mock/data.ts · mock/types.ts</span></div>
+        <div class="file" data-d="Canned demo data and its type definitions." data-path="frontend/src/lib/mock/data.ts"><span class="leaf">·</span><span class="name">mock/data.ts, mock/types.ts</span></div>
         <div class="file" data-d="Small shared helper functions." data-path="frontend/src/lib/utils.ts"><span class="leaf">·</span><span class="name">utils.ts</span></div>
       </details>
     </details>
@@ -311,16 +350,16 @@
         <summary data-d="A faithful copy of production, on your laptop." data-path="infra/local/"><span class="tw"></span><span class="name">local/</span></summary>
         <div class="file" data-d="The local stack definition." data-path="infra/local/docker-compose.local.yml"><span class="leaf">·</span><span class="name">docker-compose.local.yml</span></div>
         <div class="file" data-d="Local web server — serves the site and proxies /api, /auth." data-path="infra/local/Caddyfile"><span class="leaf">·</span><span class="name">Caddyfile</span></div>
-        <div class="file" data-d="Local-only settings + template." data-path="infra/local/.env.local.example"><span class="leaf">·</span><span class="name">.env.local · .env.local.example</span></div>
+        <div class="file" data-d="Local-only settings + template." data-path="infra/local/.env.local.example"><span class="leaf">·</span><span class="name">.env.local, .env.local.example</span></div>
         <div class="file" data-d="One command to build + start the preview at localhost:8080." data-path="infra/local/preview.sh"><span class="leaf">·</span><span class="name">preview.sh</span></div>
       </details>
       <details class="dir">
         <summary data-d="The production stack." data-path="infra/prod/"><span class="tw"></span><span class="name">prod/</span></summary>
         <div class="file" data-d="The production stack definition." data-path="infra/prod/docker-compose.prod.yml"><span class="leaf">·</span><span class="name">docker-compose.prod.yml</span></div>
         <div class="file" data-d="Production web-server config (with HTTPS)." data-path="infra/prod/Caddyfile"><span class="leaf">·</span><span class="name">Caddyfile</span></div>
-        <div class="file" data-d="Recipes that build the backend + web container images." data-path="infra/prod/backend.Dockerfile"><span class="leaf">·</span><span class="name">backend.Dockerfile · web.Dockerfile</span></div>
+        <div class="file" data-d="Recipes that build the backend + web container images." data-path="infra/prod/backend.Dockerfile"><span class="leaf">·</span><span class="name">backend.Dockerfile, web.Dockerfile</span></div>
         <div class="file" data-d="What runs when the backend container starts: migrate, then serve." data-path="infra/prod/entrypoint.sh"><span class="leaf">·</span><span class="name">entrypoint.sh</span></div>
-        <div class="file" data-d="Deploy, back up, and restore the production server." data-path="infra/prod/deploy.sh"><span class="leaf">·</span><span class="name">deploy.sh · backup.sh · restore.sh</span></div>
+        <div class="file" data-d="Deploy, back up, and restore the production server." data-path="infra/prod/deploy.sh"><span class="leaf">·</span><span class="name">deploy.sh, backup.sh, restore.sh</span></div>
         <div class="file" data-d="Template for the production secrets/settings." data-path="infra/prod/.env.prod.example"><span class="leaf">·</span><span class="name">.env.prod.example</span></div>
       </details>
     </details>
@@ -330,7 +369,7 @@
       <summary data-d="Internal notes — never shipped to customers: the data-processing agreement, the security brief, the cost model, and this explainer." data-path="docs/"><span class="tw"></span><span class="name">docs/</span></summary>
       <div class="file" data-d="The data-processing agreement (GDPR / German 'AVV')." data-path="docs/auftragsverarbeitungsvertrag-avv.md"><span class="leaf">·</span><span class="name">auftragsverarbeitungsvertrag-avv.md</span></div>
       <div class="file" data-d="A plain summary of the security & privacy posture." data-path="docs/data-security-and-privacy-brief.md"><span class="leaf">·</span><span class="name">data-security-and-privacy-brief.md</span></div>
-      <div class="file" data-d="The cost model and the script that builds it." data-path="docs/budget-estimate-math.pdf"><span class="leaf">·</span><span class="name">budget-estimate-math.pdf · build-budget-estimate.py</span></div>
+      <div class="file" data-d="The cost model and the script that builds it." data-path="docs/budget-estimate-math.pdf"><span class="leaf">·</span><span class="name">budget-estimate-math.pdf, build-budget-estimate.py</span></div>
       <div class="file" data-d="This guide you're reading right now." data-path="docs/explainer/"><span class="leaf">·</span><span class="name">explainer/</span></div>
     </details>
 

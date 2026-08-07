@@ -8,51 +8,154 @@
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html" class="active">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
-    <a href="09-comprehend-walkthrough.html">9 · Comprehend</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
 <main>
-  <p class="kicker">A guided tour of the client-demo-v1 repository</p>
+  <p class="kicker">A guided tour of the indigo-iota-v3-mvp repository</p>
   <h1>How this whole thing works</h1>
-  <p class="lead">This is a plain-language map of your codebase — what the pieces are, how a click in the
-  browser travels all the way to the database and back, and which file does what. It assumes you can read
-  Python but have <em>not</em> met most of the surrounding concepts. We build those up first.</p>
+  <p class="lead">A plain-language map of the codebase: what the pieces are, how a click in the browser travels
+  to the database and back, and which file does what. Start at the top even if the project is completely new to
+  you — the first section assumes nothing at all.</p>
 
-  <div class="callout">
-    Read it in order the first time — each page leans on the one before. After that, jump around using the
-    bar at the top. Every diagram is rendered live and works offline.
+  <h2>Start here: what is this product?</h2>
+
+  <p>Read this section first if you have not seen the project before. It uses no technical vocabulary.
+  Everything after it builds on the picture drawn here.</p>
+
+  <h3>The problem it solves</h3>
+
+  <p>Management consultants are hired to find out why a company is underperforming and what to do about it. A
+  large part of that job is unglamorous. Before anyone can give advice, somebody has to read an enormous
+  quantity of the company's material — emails, reports, spreadsheets, meeting notes — and work out what is
+  actually going on. That reading takes weeks, and it is expensive, because senior people do it.</p>
+
+  <p>Worse, the understanding does not survive. It lives in the heads of whoever did the reading. When they
+  move to another project it leaves with them, and the next team starts from nothing.</p>
+
+  <h3>What Indigo Iota does about it</h3>
+
+  <p>Iota does that reading continuously and automatically, and keeps what it learns. It does two distinct
+  jobs. The difference between them is the single most useful thing to understand about the product.</p>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <h4>Job one: build a memory</h4>
+      <p>Connect a company's mailbox and shared documents. Iota reads what arrives and turns it into organised
+      knowledge: a page for each person, each company, each deal, and a map of how they connect.</p>
+      <p>You can then ask questions in ordinary English and get an answer that cites the email or document it
+      came from.</p>
+      <p class="small">Chapters 1 to 9.</p>
+    </div>
+    <div class="card">
+      <h4>Job two: form a diagnosis</h4>
+      <p>Tell it what the company is trying to achieve — say, double revenue within two years. Iota works
+      through its memory and builds an argument about where the money is leaking.</p>
+      <p>The result is a tree you can read and disagree with: the goal at the top, possible explanations
+      beneath it, specific things to do at the bottom.</p>
+      <p class="small">Chapter 10, which is new.</p>
+    </div>
   </div>
 
-  <h2>What is this product, in one breath?</h2>
-  <p><strong>Indigo Iota is a "project brain" for consultancies.</strong> It quietly reads the email, files,
-  and chat of a client engagement, and keeps a living, organised memory of it: pages about each
-  <em>person</em>, <em>company</em>, and <em>project</em>, a map of how they connect, and a search box you
-  can ask questions of — with citations back to the source. Each customer's memory lives in its own separate
-  database so no two customers' data ever touch.</p>
+  <p>The first job is a very good librarian. The second is a consultant who has read everything the librarian
+  filed. The second is only possible because the first exists.</p>
+
+  <h3>Who uses it, and what they see</h3>
+
+  <table>
+    <tr><th>Person</th><th>What they do</th><th>Where</th></tr>
+    <tr><td><strong>A consultant</strong> on the engagement</td><td>Asks the memory questions, reads the diagnosis, argues with it</td><td>The main app</td></tr>
+    <tr><td><strong>An administrator</strong> at the customer</td><td>Connects mailboxes, sets what may and may not be read, sets the objective, watches the spend</td><td>The Admin Center</td></tr>
+    <tr><td><strong>You</strong>, running the platform</td><td>Creates customer workspaces, watches cost across all of them</td><td>The Control Tower</td></tr>
+  </table>
+
+  <h3>The promise the design is built around</h3>
+
+  <p>This system reads a company's private correspondence. That is a serious thing to be trusted with, and
+  three decisions in the architecture exist because of it.</p>
+
+  <p><strong>Each customer's knowledge lives in its own separate database.</strong> Not one shared table with a
+  customer column — a genuinely separate database. Two customers' data cannot come back from the same query,
+  even by mistake.</p>
+
+  <p><strong>Not everything gets read.</strong> Before an email reaches the memory it passes a filter that
+  sorts it into one of four buckets, and only one bucket is kept. Legal advice, individual pay and performance,
+  medical matters and personal mail are meant to be excluded. A rejected email leaves a record that it was
+  rejected, but its content is never stored.</p>
+
+  <p><strong>The processing stays in Europe.</strong> The service that reads text is hosted in the EU, and the
+  step that turns text into a searchable form runs on our own machines, so that step sends nothing outside at
+  all.</p>
+
+  <h3>What it costs to run, and why that is visible</h3>
+
+  <p>Reading text with an AI model costs money per page. So every call is recorded: which model, how much text
+  went in and out, what it cost at the price in force that day, and which customer it belonged to. A workspace
+  is funded up front, and the software stops when the money runs out. It cannot quietly run up a bill.</p>
+
+  <div class="callout">
+    <strong>If you read one more thing, read <a href="01-concepts.html">Chapter 1</a>.</strong> It defines every
+    technical word used anywhere else in this guide — server, database, embedding, container, token, agent —
+    with analogies and no assumed knowledge.
+  </div>
+
+  <h2>The two layers, side by side</h2>
+
+  <p>Because this distinction is what everything else hangs off, here it is as a picture. Material comes in on
+  the left, becomes memory in the middle, and becomes an argument on the right.</p>
+
+  <div class="mermaid">
+flowchart LR
+  src["📥 Emails and documents"]
+  subgraph ctx["Context layer, chapters 1 to 9"]
+    direction TB
+    filt["Filter: what may be read"]
+    comp["Read it and organise it"]
+    brain[("The memory:<br/>people, companies, deals")]
+    filt --> comp --> brain
+  end
+  subgraph dia["Diagnosis layer, chapter 10"]
+    direction TB
+    goal["The objective you set"]
+    tree["A tree of possible explanations"]
+    inits["Concrete initiatives, each sized"]
+    goal --> tree --> inits
+  end
+  src --> filt
+  brain -.->|"searched for facts"| tree
+  </div>
+
+  <p>The dotted arrow is the important one. The diagnosis layer never invents facts. It asks the memory for
+  them, and every claim it makes can be traced back to a document.</p>
 
   <h2>The chapters</h2>
+
+  <p>Read them in order the first time; each leans on the one before. After that, jump around using the bar at
+  the top. Every diagram renders live and works offline.</p>
+
   <div class="hub">
     <a href="01-concepts.html">
       <div class="num">01</div><h3>The concepts</h3>
-      <p>Client &amp; server, frontend &amp; backend, what an "API" and a database really are, containers,
-      embeddings, multi-tenancy — explained with analogies, no jargon.</p>
+      <p>Client and server, frontend and backend, what an "API" and a database really are, containers,
+      embeddings, multi-tenancy, agents and hypothesis trees — with analogies, no jargon.</p>
     </a>
     <a href="02-architecture.html">
       <div class="num">02</div><h3>The architecture</h3>
-      <p>The three big moving parts and the two outside services. Who runs where, and who is allowed to talk
-      to whom. The 10,000-foot view.</p>
+      <p>The big moving parts and the outside services. Who runs where, and who is allowed to talk to whom.
+      The 10,000-foot view.</p>
     </a>
     <a href="03-data-model.html">
       <div class="num">03</div><h3>The data model</h3>
@@ -66,8 +169,8 @@
     </a>
     <a href="05-flows.html">
       <div class="num">05</div><h3>The flows</h3>
-      <p>Five end-to-end journeys (signing in, an email becoming knowledge, asking a question…) drawn step
-      by step — each step labelled with the file that runs it.</p>
+      <p>End-to-end journeys — signing in, an email becoming knowledge, asking a question, building a
+      diagnosis — drawn step by step, each step labelled with the file that runs it.</p>
     </a>
     <a href="06-repo-atlas.html">
       <div class="num">06</div><h3>The repo atlas</h3>
@@ -75,25 +178,30 @@
       is left unexplained.</p>
     </a>
     <a href="07-mcp.html">
-      <div class="num">07</div><h3>MCP &amp; connectors</h3>
-      <p>The newest doorway: how Claude &amp; ChatGPT plug into a customer&apos;s brain as tools,
-      and the OAuth that keeps that access scoped, read-only, and revocable.</p>
+      <div class="num">07</div><h3>Connectors</h3>
+      <p>How Claude and ChatGPT plug into a customer&apos;s brain as tools, and the OAuth that keeps that
+      access scoped, read-only, and revocable.</p>
     </a>
     <a href="08-transformers.html">
       <div class="num">08</div><h3>Transformers</h3>
-      <p>What the language model underneath actually is — tokens, embeddings, and attention — in
-      plain terms, so the comprehend agents aren&apos;t a black box.</p>
+      <p>What the language model underneath actually is — tokens, embeddings, and attention — in plain terms,
+      so the agents aren&apos;t a black box.</p>
     </a>
     <a href="09-comprehend-walkthrough.html">
       <div class="num">09</div><h3>Comprehend walkthrough</h3>
-      <p>One example email traced through every agent — translate, identify, canonicalize, attributes,
-      relationships, normalize, describe, timeline, graph sync — with the real prompts and live animations.</p>
+      <p>One example email traced through every agent that builds the memory — translate, identify,
+      canonicalize, attributes, relationships, describe, timeline — with the real prompts and live animations.</p>
+    </a>
+    <a href="10-diagnosis.html">
+      <div class="num">10</div><h3>The diagnosis engine</h3>
+      <p>The newest layer: how an objective becomes a hypothesis tree. What MECE means, what the seven agents
+      each do, how an initiative gets sized, and how you argue with a node you disagree with.</p>
     </a>
   </div>
 
   <h2>The shape of the repository</h2>
   <p>At the very top, the project is four folders. Almost everything else lives inside them.</p>
-<pre><code>client-demo-v1/
+<pre><code>indigo-iota-v3-mvp/
 ├── backend/     the "engine": Python (FastAPI) + the databases. Does the real work.
 ├── frontend/    the "face": the Next.js website you click around in.
 ├── infra/       the "plumbing": Docker recipes to run it locally and in production.

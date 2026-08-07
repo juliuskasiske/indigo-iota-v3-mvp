@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>3 · Data model — Indigo Iota explainer</title>
+<title>3. Data model — Indigo Iota explainer</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="topbar"><div class="topbar-inner">
-  <a class="brand" href="index.html">indigo<span class="iota">iota</span> · explainer</a>
+  <a class="brand" href="index.html">indigo<span class="iota">iota</span> explainer</a>
   <nav class="nav">
     <a href="index.html">Home</a>
-    <a href="01-concepts.html">1 · Concepts</a>
-    <a href="02-architecture.html">2 · Architecture</a>
-    <a href="03-data-model.html" class="active">3 · Data model</a>
-    <a href="04-frontend-pages.html">4 · Pages</a>
-    <a href="05-flows.html">5 · Flows</a>
-    <a href="06-repo-atlas.html">6 · Repo atlas</a>
-    <a href="07-mcp.html">7 · MCP &amp; connectors</a>
-    <a href="08-transformers.html">8 · Transformers</a>
+    <a href="01-concepts.html">1. Concepts</a>
+    <a href="02-architecture.html">2. Architecture</a>
+    <a href="03-data-model.html" class="active">3. Data model</a>
+    <a href="04-frontend-pages.html">4. Pages</a>
+    <a href="05-flows.html">5. Flows</a>
+    <a href="06-repo-atlas.html">6. Repo atlas</a>
+    <a href="07-mcp.html">7. Connectors</a>
+    <a href="08-transformers.html">8. Transformers</a>
+    <a href="09-comprehend-walkthrough.html">9. Comprehend</a>
+    <a href="10-diagnosis.html">10. Diagnosis</a>
   </nav>
 </div></div>
 
@@ -39,16 +41,16 @@
   <div class="mermaid">
 flowchart TB
   inbox["📨 New email / file / message<br/>(in Microsoft 365)"]
-  subgraph m1["① CAPTURE — pull it in"]
+  subgraph m1["① Capture — pull it in"]
     c1["Ask Graph 'what changed?', de-dupe,<br/>tidy to one shape, store the raw copy"]
   end
-  subgraph m2["② TRIAGE — is it in scope?"]
+  subgraph m2["② Triage — is it in scope?"]
     c2["Score against the triage buckets,<br/>keep in-scope, drop the rest"]
   end
-  subgraph m3["③ COMPREHEND — text → pages → graph"]
+  subgraph m3["③ Comprehend — text → pages → graph"]
     c3["AI agents read each kept item, write the<br/>brain page (source of truth), then derive<br/>its entities + relationships"]
   end
-  subgraph m4["④ INDEX — make it findable"]
+  subgraph m4["④ Index — make it findable"]
     c4["Chop each page into passages,<br/>embed + keyword-index for search"]
   end
   inbox --> m1 --> m2 --> m3 --> m4
@@ -149,7 +151,7 @@ erDiagram
   question_entities { int question_id FK  int entity_id FK  text method  int rank }
     </div>
   </div>
-  <p class="erhint">drag to pan · scroll to zoom · click a table for detail</p>
+  <p class="erhint">drag to pan, scroll to zoom, click a table for detail</p>
   <div class="er-chips" id="brainChips"></div>
   <div class="erpanel empty" id="brainPanel">Click a table above to see its columns and job.</div>
 
@@ -173,6 +175,63 @@ erDiagram
   drive detection. What used to be hardcoded ("person | company | project" in the agent prompt,
   "works_at | leads | …" in a frozenset) is now config seeded at onboarding, and <code>entities.type</code> /
   <code>relationships.predicate</code> are foreign-keyed onto it.</div>
+
+  <!-- ============================ DIAGNOSIS ============================ -->
+  <h2>Database 1, part two — the diagnosis tables</h2>
+  <p>These seven tables live in the <em>same</em> customer database as the thirteen above. They are drawn
+  separately because they are a different job. The tables above are memory: what the company said and did. The
+  tables below are an argument built on top of that memory: what we think is going wrong and what to do
+  about it.</p>
+  <p>Two ideas explain most of the design here.</p>
+  <p><strong>The tree is stored, not recomputed.</strong> An earlier version rebuilt the tree on every page load
+  by replaying the agents' log. That works for a flat list of sentences and breaks the moment a node needs
+  reasoning, evidence and a full card attached to it. So a node is now a row you can update, revise, and mark
+  as rejected.</p>
+  <p><strong>The objective is copied onto the run.</strong> When a run starts, the whole objective — target,
+  deadline, currency — is frozen into <code>swarm_runs.objective_snapshot</code>. Otherwise, editing the target
+  next month would silently rewrite what a finished run is claimed to have achieved: the same tree covering
+  40% instead of 60%, with nothing about the tree having changed.</p>
+
+  <div class="erwrap" id="diagEr">
+    <div class="ertools">
+      <button class="zout" title="Zoom out">−</button>
+      <button class="zin" title="Zoom in">+</button>
+      <button class="reset" title="Reset view">reset</button>
+    </div>
+    <div class="mermaid">
+erDiagram
+  objective_function ||--o{ swarm_runs         : "snapshotted into each run"
+  swarm_runs         ||--o{ agent_events       : "run_id → logged by"
+  swarm_runs         ||--o{ hypothesis_nodes   : "run_id → the tree of"
+  swarm_runs         ||--o{ node_interventions : "run_id → steered by"
+  hypothesis_nodes   ||--o{ hypothesis_nodes   : "parent_id → splits into"
+  hypothesis_nodes   ||--o{ hypothesis_evidence: "node_id → stands on"
+  hypothesis_nodes   ||--o| initiative_cards   : "node_id → 1:1 card"
+  hypothesis_nodes   ||--o{ node_interventions : "node_id → was reviewed by"
+  objective_function { int id PK  jsonb priorities  text impact_metric  text impact_type  numeric baseline_amount  numeric target_amount  date program_end_date  int run_rate_year  text headline }
+  swarm_runs { int id PK  text status  ts started_at  ts stopped_at  jsonb objective_snapshot }
+  agent_events { int id PK  int run_id FK  ts ts  text role  text kind  text message }
+  hypothesis_nodes { int id PK  int run_id FK  int parent_id FK  text kind  text label  text rationale  text mece_note  text status  text discard_reason  int sort_order }
+  hypothesis_evidence { int id PK  int node_id FK  text text  text source  text page_path  text kind }
+  initiative_cards { int node_id PK  text context  text sizing_approach  jsonb what_must_be_true  jsonb next_steps  numeric value_amount  text value_type  int value_year  text confidence  bool feasible_by_end }
+  node_interventions { int id PK  int run_id FK  int node_id FK  text kind  text comment  text node_label  text status  int replacement_node_id FK }
+    </div>
+  </div>
+  <p class="erhint">drag to pan, scroll to zoom, click a table for detail</p>
+  <div class="er-chips" id="diagChips"></div>
+  <div class="erpanel empty" id="diagPanel">Click a table above to see its columns and job.</div>
+
+  <div class="callout"><strong>One table points at itself.</strong> <code>hypothesis_nodes.parent_id</code>
+  points back at <code>hypothesis_nodes.id</code>. That single line is what makes the table a tree rather than
+  a list: the root has no parent, every other box names the box above it, and a tree of any shape fits in one
+  table. The database is not told how deep the tree may go — the limit is a constant in the agent code, so
+  changing it is a one-line edit and not a migration.
+
+  <br><br><strong>And one foreign key was deliberately weakened.</strong> When a reviewer rejects a box they must
+  say why, and that reason is the audit trail. Originally, deleting a node deleted its review comments too — so
+  giving feedback on a branch, which rebuilds everything below it, quietly destroyed every rejection reason
+  underneath. Migration <code>0035</code> flipped that: a review comment now survives the node it was about,
+  carrying a copy of that node's label so it still reads as a comment about something.</div>
 
   <!-- ============================ CONTROL ============================ -->
   <h2>Database 2 — the control plane <span class="small">(shared)</span></h2>
@@ -206,7 +265,7 @@ erDiagram
   audit_log { int id PK  text actor  text action  json detail }
     </div>
   </div>
-  <p class="erhint">drag to pan · scroll to zoom · click a table for detail</p>
+  <p class="erhint">drag to pan, scroll to zoom, click a table for detail</p>
   <div class="er-chips" id="ctrlChips"></div>
   <div class="erpanel empty" id="ctrlPanel">Click a table above to see its columns and job.</div>
 
@@ -267,7 +326,15 @@ erDiagram
   brings any database up to the latest version. The rule: never edit an applied file, always add a new numbered
   one — that's what guarantees every customer's brain has the exact same structure. The table names above are the
   ones <code>0006_ingestion_vocabulary.sql</code> settled on: <code>source_events → captured_events</code>,
-  <code>nodes/edges → entities/relationships</code>, and so on.</p>
+  <code>nodes/edges → entities/relationships</code>, and so on. The customer-brain series currently runs to
+  <code>0035</code>; the last four (<code>0032</code>–<code>0035</code>) are the diagnosis tables above.</p>
+
+  <p>Migration <code>0035</code> is worth reading if you want to see the rule earn its keep. It does not add a
+  feature — it corrects a foreign key that had the wrong deletion behaviour and was quietly destroying review
+  comments. Because the change is its own numbered file rather than an edit to <code>0034</code>, every
+  customer database that already ran <code>0034</code> gets the correction applied on top, in the same order,
+  with the same result. Editing the original file instead would have fixed only databases created afterwards,
+  and left the older ones silently different.</p>
 
   <div class="pager">
     <a href="02-architecture.html">← Architecture</a>
@@ -296,7 +363,7 @@ const BRAIN = {
     ["body_text","the cleaned plain-text content — this is what the agents read."],
     ["attachments","JSON metadata ([{name, mime, …}]) — not the file bytes."],
     ["raw","the original payload kept verbatim, so comprehend can re-run without re-pulling from Microsoft."],
-    ["capture_run_id","→ capture_runs — the sweep that FIRST captured this event. A later sweep that re-sees it counts a duplicate and never touches the row, so this always points at the original sweep. ON DELETE SET NULL: pruning a run log never deletes content."],
+    ["capture_run_id","→ capture_runs — the sweep that <em>first</em> captured this event. A later sweep that re-sees it counts a duplicate and never touches the row, so this always points at the original sweep. ON DELETE SET NULL: pruning a run log never deletes content."],
     ["ingested_at","when capture wrote this row."],
     ["processed_at","null until phase ③ comprehends it; set once done so the runner only picks up new events (and can resume after a credit stop)."]]},
   capture_runs: { filled:"written by ① + ②", summary:"One mailbox sweep — the operational log the Admin Center's Mail-sync panel reads. It records the tally for a single pull, not the content.", cols:[
@@ -347,10 +414,10 @@ const BRAIN = {
     ["comprehension_id","→ comprehension_log — the comprehend run that wrote this entity (CASCADE: re-processing replaces these rows)."],
     ["entity_id","→ entities — the specific entity touched (CASCADE: entities aren't deleted in normal operation, so this link is stable)."],
     ["action","'created' when this comprehend produced a brand-new brain page for the entity, 'updated' when it revised an existing one — mirrors comprehension_log.entities_created / entities_updated."]]},
-  comprehension_relationships: { filled:"written by ③ Comprehend", summary:"The relationship half of the provenance link: one row per relationship a given comprehend wrote. Relationships are additive and idempotent on the triple — re-syncing a page asserts (subject, predicate, object) again and the existing row's id is reused rather than recreated, so a relationship is attributed to the comprehend that FIRST wrote it. ON DELETE CASCADE keeps these links tidy if a relationship is ever removed. The link means 'the relationships this comprehend asserted'.", cols:[
+  comprehension_relationships: { filled:"written by ③ Comprehend", summary:"The relationship half of the provenance link: one row per relationship a given comprehend wrote. Relationships are additive and idempotent on the triple — re-syncing a page asserts (subject, predicate, object) again and the existing row's id is reused rather than recreated, so a relationship is attributed to the comprehend that <em>first</em> wrote it. ON DELETE CASCADE keeps these links tidy if a relationship is ever removed. The link means 'the relationships this comprehend asserted'.", cols:[
     ["comprehension_id","→ comprehension_log — the comprehend run that wrote this relationship (CASCADE)."],
     ["relationship_id","→ relationships — the specific relationship asserted (CASCADE)."]]},
-  brain_pages: { filled:"written by ③ Comprehend", summary:"The brain page itself — the SOURCE OF TRUTH. Everything else in this database (entities, relationships, chunks) is a derived index rebuilt from these rows. A page is the {frontmatter, description, timeline, relationships} JSON document for one entity. It used to be a file on disk, but on a containerised deploy that's ephemeral (wiped on redeploy) and unshared (the api and sync services have separate filesystems), so it now lives in a durable row, keyed by the same page_path the entities/chunks tables reference.", cols:[
+  brain_pages: { filled:"written by ③ Comprehend", summary:"The brain page itself — the <em>source of truth</em>. Everything else in this database (entities, relationships, chunks) is a derived index rebuilt from these rows. A page is the {frontmatter, description, timeline, relationships} JSON document for one entity. It used to be a file on disk, but on a containerised deploy that's ephemeral (wiped on redeploy) and unshared (the api and sync services have separate filesystems), so it now lives in a durable row, keyed by the same page_path the entities/chunks tables reference.", cols:[
     ["page_path","primary key — the relative path string, e.g. 'persons/felix-kasiske.json'. The same key entities.page_path and chunks.page_path point at, so the derived index joins straight back to its source page."],
     ["entity_type","→ entity_types(key) — the page's type (RESTRICT/CASCADE, like entities.type)."],
     ["data","JSONB — the full page document: frontmatter (structured attributes), description, timeline, and the subject's outgoing relationships."],
@@ -401,7 +468,7 @@ const BRAIN = {
     ["section","which part of the page — 'description' | 'timeline'."],
     ["date","YYYY-MM-DD for a timeline entry; null for a description chunk."],
     ["text","the actual passage that was embedded."],
-    ["embedding","VECTOR(1024) from jina-embeddings-v3 (multilingual) — the meaning vector for semantic search."],
+    ["embedding","VECTOR(384) from paraphrase-multilingual-MiniLM-L12-v2, which runs on our own machines — the meaning vector for semantic search."],
     ["keywords","tsvector (to_tsvector('english', text)) — for keyword search."],
     ["created_at","when this chunk was indexed."]]},
   questions: { filled:"written at ask-time", summary:"History of every Ask-box question with the answer and citations frozen in, so a past question can be replayed without re-paying the AI. Its own ledger — no foreign keys.", cols:[
@@ -422,6 +489,86 @@ const BRAIN = {
     ["margin","the security caution band (default 0.0300): how close redzone must be to in-scope to trigger the Layer-2 runoff drop."],
     ["updated_at","when the margin was last changed."],
     ["updated_by","who changed it."]]},
+};
+const DIAG = {
+  objective_function: { filled:"set by an admin on the Objectives tab", summary:"The goal, written down precisely enough to be checked — and there is only ever one row (the id is forced to 1). It holds the ranked levers, and since migration 0032 the whole program: what the impact is measured in, whether it recurs, where the company is today, where it must get to, by when, and the one sentence the agents compress all of that into.", cols:[
+    ["id","always 1 — a CHECK constraint forces a single row per customer."],
+    ["priorities","JSON list of the ranked levers, e.g. [{id, label, bucket, rank}]. Rank 1 is what the agents weigh most."],
+    ["context","free text from the admin: anything about the company the agents should know but could not read anywhere."],
+    ["impact_metric","what the goal is measured in — revenue | ebit | ebitda | gross_margin | cash | custom."],
+    ["impact_metric_label","the free-text name of the metric when impact_metric is 'custom'."],
+    ["impact_type","recurring (a level the company keeps earning every year) or one_time (it happens once). These cannot be added together, so every initiative's value is labelled with which it is."],
+    ["currency","the currency all the amounts are in (EUR by default)."],
+    ["baseline_amount","where the company is today, in that metric."],
+    ["target_basis","how to read target_amount — 'absolute' (it IS the goal), 'percent' (+N% on the baseline), or 'multiple' (N times the baseline)."],
+    ["target_amount","the number read against target_basis. The real goal is computed once in Python (resolved_target) so the screen and the agents can never disagree about it."],
+    ["program_start_date","when the transformation program starts."],
+    ["program_end_date","the deadline — the date by which the impact has to be there. Used to judge whether an initiative is even worth starting."],
+    ["run_rate_year","the financial year the recurring impact is measured in. Defaults to the end date's year unless the admin changes it."],
+    ["reporting_cadence","how often progress is reviewed — weekly | biweekly | monthly | quarterly."],
+    ["headline","the one sentence the agents compress everything above into. This becomes the root box of the tree, which is why it is stored and editable rather than regenerated each run — the user approves the sentence before any agent time is spent on it."],
+    ["headline_source","'agent' if the sentence is as generated, 'user' if a person edited it."],
+    ["headline_at","when the sentence was written. Compared against updated_at to show a 'this is out of date' chip when the objective changed afterwards."],
+    ["updated_at","when the objective was last edited."]]},
+  swarm_runs: { filled:"one row per press of Start", summary:"A single diagnosis run, from start to stop. Everything a run produces — its log, its tree, its reviews — hangs off this row, so a customer can have several runs and compare them.", cols:[
+    ["id","surrogate primary key."],
+    ["status","running | stopped."],
+    ["started_at","when someone pressed Start."],
+    ["stopped_at","when it finished or was stopped; null while running."],
+    ["objective_snapshot","JSON copy of the whole objective as it stood the moment this run started. The reason: the coverage figure divides by the target, and reading that target live would let a later edit silently rewrite what a finished run is claimed to have covered."]]},
+  agent_events: { filled:"written continuously during a run", summary:"The append-only activity log — one line per thing an agent did, in order. This is what the live feed on the Overview board reads. It is a diary, not a data structure: the tree itself lives in hypothesis_nodes, and this table was deliberately left unchanged when the tree moved out of it.", cols:[
+    ["id","surrogate primary key; also the natural order of events."],
+    ["run_id","→ swarm_runs (CASCADE)."],
+    ["ts","when the line was written."],
+    ["role","which agent wrote it — framer | decomposition | initiative | validator | planning | sizer | judge | system."],
+    ["kind","log | node | fact — kept from the earlier design; the feed shows all three the same way."],
+    ["message","the human-readable line, always set. This is what you actually read in the feed."],
+    ["node_id / parent_id / label / metric / source / status","the older event-shaped tree fields. Still written for continuity; the tree is now read from hypothesis_nodes instead."]]},
+  hypothesis_nodes: { filled:"written by the agents, revised by reviewers", summary:"One box on the board. Three kinds, in strict order of depth: 'objective' is the single root (the headline sentence), 'branch' is a decomposition step that may split again, and 'initiative' is a leaf with a card attached. parent_id points back at this same table, which is the one line that makes it a tree.", cols:[
+    ["id","surrogate primary key."],
+    ["run_id","→ swarm_runs (CASCADE: deleting a run takes its whole tree)."],
+    ["parent_id","→ hypothesis_nodes — the box above this one. Null only for the root. CASCADE, so deleting a branch removes everything under it in one statement."],
+    ["kind","objective | branch | initiative."],
+    ["label","the caption on the box. For an initiative this is also the card's name field."],
+    ["rationale","why this box exists at all. On a branch this is the reasoning the tree is meant to make visible — the answer to 'why did you look here?'"],
+    ["mece_note","set on the <em>parent</em>, not the child: why this parent's children together cover the whole of it. Exhaustiveness is a property of a split, not of any one branch, so it belongs on the box that did the splitting."],
+    ["status","investigating | supported | needs_evidence | discarded."],
+    ["discard_reason","the reviewer's reason, copied onto the node so the board can show it without a join, and so the agents building a replacement can be handed 'do not repeat this, and here is why' in a single read."],
+    ["sort_order","left-to-right order among siblings."],
+    ["created_at / updated_at","when the box was made and last changed."]]},
+  hypothesis_evidence: { filled:"attached as each node is built", summary:"The facts a box stands on. Every branch and initiative is given real passages retrieved from the customer's own memory, and page_path links each one back to the brain page it came from — so you can click through from a claim to the thing that supports it. This is what keeps the diagnosis from being an invention.", cols:[
+    ["id","surrogate primary key."],
+    ["node_id","→ hypothesis_nodes (CASCADE)."],
+    ["text","the passage itself, as retrieved."],
+    ["source","a display label for where it came from, e.g. a person or company name."],
+    ["page_path","→ the brain page (persons/….json), so the fact links back into the memory."],
+    ["kind","'fact' (retrieved from the brain), 'objective' (a program parameter, used on the root box so even the root shows what it was derived from), or 'assumption'."]]},
+  initiative_cards: { filled:"filled in progressively by four agents", summary:"The detail behind a leaf. One row per initiative node (its primary key IS the node id, so the relationship is exactly one-to-one). The card renders five fields: the node's own label is the name, and the four below are the rest. Four different agents each fill in their part as the run proceeds, which is why the card fills in while you watch.", cols:[
+    ["node_id","→ hypothesis_nodes — primary key and foreign key at once, which is how a strict 1:1 is expressed in SQL."],
+    ["context","card field 2 — what is actually meant by this initiative, in a sentence or two."],
+    ["sizing_approach","card field 3 — how you would properly work out what it is worth."],
+    ["what_must_be_true","card field 4 — JSON list of the conditions that have to hold for this to be worth doing."],
+    ["next_steps","card field 5 — JSON list of things someone could start this week."],
+    ["value_amount","the estimated value as a real number, not a formatted string like 'EUR 0.6M (est.)'. This is the whole point: numbers can be added up against the target, strings cannot."],
+    ["value_currency","the currency of that number."],
+    ["value_type","recurring | one_time — never mixed into the same total."],
+    ["value_year","the run-rate year the value holds in."],
+    ["value_basis","one sentence defending the number, so a reader can argue with the arithmetic rather than just distrust it."],
+    ["confidence","low | medium | high, from the Judge."],
+    ["feasible_by_end","can this realistically land before program_end_date? A large number that arrives after the deadline is not worth the same as one that arrives before it."],
+    ["updated_at","when the card was last written."]]},
+  node_interventions: { filled:"written when a person steers the tree", summary:"One row per act of human review. Two kinds: 'discard' rejects a box and everything under it and asks for a replacement; 'feedback' keeps the box but revises it and rebuilds what is beneath it. Both require a written reason, and both send the agents back to work on that part of the tree.", cols:[
+    ["id","surrogate primary key."],
+    ["run_id","→ swarm_runs (CASCADE)."],
+    ["node_id","→ hypothesis_nodes, ON DELETE SET NULL and nullable. Weakened on purpose in migration 0035: this row must outlive the node, because rebuilding a subtree deletes nodes and used to destroy the rejection reasons underneath along with them."],
+    ["node_label / node_kind","a copy of what the box said and what kind it was, taken at the time. Without this, a surviving comment whose node is gone reads as a comment about nothing."],
+    ["kind","discard | feedback."],
+    ["comment","the reviewer's reason. Required, never blank — a rejection without a reason teaches the agents nothing."],
+    ["actor","who did it."],
+    ["status","pending | applied | failed. The screen polls this rather than the run's own running flag, because a review is not a full pass."],
+    ["error","why it failed, if it did."],
+    ["replacement_node_id","→ hypothesis_nodes — what the agents produced in response: the new box after a discard, or the revised box after feedback. SET NULL, so losing the replacement does not lose the record that one was asked for."],
+    ["created_at / applied_at","when the review was made and when the agents finished responding to it."]]},
 };
 const CTRL = {
   organizations: { filled:"the customer directory", summary:"One row per customer (tenant). The hub the rest of the control plane hangs off — tenant databases, memberships, SSO, credits, and usage all point back here.", cols:[
@@ -577,6 +724,7 @@ function makeErInteractive(wrapId, panelId, chipsId, details){
 
 mermaid.run().then(() => {
   makeErInteractive('brainEr','brainPanel','brainChips', BRAIN);
+  makeErInteractive('diagEr','diagPanel','diagChips', DIAG);
   makeErInteractive('ctrlEr','ctrlPanel','ctrlChips', CTRL);
 });
 </script>
