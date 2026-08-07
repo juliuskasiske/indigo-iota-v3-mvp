@@ -1,36 +1,40 @@
 import type { TreeNode } from "@/lib/api";
 
-// Pure layout for the hypothesis board: a left-to-right tidy tree.
+// Pure layout for the hypothesis board: a top-down tidy tree.
 //
-// The classic issue-tree arrangement — leaves stack down a single column, and
-// every parent centres on the block of its children. No dependency: at our caps
-// (depth 3, four siblings) this is ~70 lines and completely deterministic, which
-// also makes it measurable in the browser rather than eyeballed.
+// The objective sits at the top, each decomposition adds a row beneath it, and
+// initiatives line up along the bottom — the way an issue tree is drawn on a
+// wall. Leaves pack left to right and every parent centres over the block of
+// its children. No dependency: at our caps this is ~80 lines and completely
+// deterministic, which also makes it measurable in the browser.
 
-export const COL_GAP = 120; // horizontal space between columns, where arrows run
-export const ROW_GAP = 26; // vertical space between sibling subtrees
+export const SIBLING_GAP = 28; // horizontal space between neighbouring boxes
+export const LEVEL_GAP = 88; // vertical space between rows, where the arrows run
 export const PAD = 56; // breathing room around the whole tree
 
+// Boxes are narrower than they would be in a left-to-right tree: top-down puts
+// every leaf side by side, so width is the scarce dimension — ten initiatives
+// across is what sets the zoom the whole board opens at.
 export const NODE_W: Record<string, number> = {
-  objective: 320,
-  branch: 250,
-  initiative: 268,
+  objective: 300,
+  branch: 196,
+  initiative: 208,
 };
 
 export const NODE_H: Record<string, number> = {
-  objective: 116,
-  branch: 88,
-  initiative: 132,
+  objective: 100,
+  branch: 80,
+  initiative: 112,
 };
 
 export interface LaidNode {
   node: TreeNode;
   id: number;
   depth: number;
-  /** Left edge. */
-  x: number;
-  /** Vertical CENTRE — parents centre on their children, so a centre is the
+  /** Horizontal CENTRE — parents centre over their children, so a centre is the
    *  natural anchor and it is what the edge endpoints use. */
+  x: number;
+  /** Top edge. */
   y: number;
   w: number;
   h: number;
@@ -53,11 +57,12 @@ export interface Layout {
   height: number;
 }
 
-/** The cubic bezier used by the other board-style views in the app, so every
- *  connector in the product has the same hand. */
+/** The vertical cubic bezier connecting one row to the next: it leaves the
+ *  parent straight down and arrives straight down into the child, so a fan of
+ *  siblings reads as one splitting flow rather than a bundle of diagonals. */
 export function edgePath(x1: number, y1: number, x2: number, y2: number): string {
-  const mx = (x1 + x2) / 2;
-  return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+  const my = (y1 + y2) / 2;
+  return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
 }
 
 export function clamp(v: number, lo: number, hi: number): number {
@@ -89,9 +94,9 @@ export function layoutTree(nodes: TreeNode[]): Layout {
   const roots = children.get(null) ?? [];
   if (!roots.length) return EMPTY;
 
-  // Depth first, so column widths can account for mixed kinds at one depth —
-  // an initiative hanging off a shallow branch sits in the same column as a
-  // branch, and the column has to be wide enough for both.
+  // Depth first, so row heights can account for mixed kinds on one row — an
+  // initiative hanging off a shallow branch shares a row with branches, and the
+  // row has to be tall enough for both.
   const depth = new Map<number, number>();
   const order: TreeNode[] = [];
   const walk = (n: TreeNode, d: number) => {
@@ -101,37 +106,37 @@ export function layoutTree(nodes: TreeNode[]): Layout {
   };
   for (const r of roots) walk(r, 0);
 
-  const colWidth: number[] = [];
+  const rowHeight: number[] = [];
   for (const n of order) {
     const d = depth.get(n.id)!;
-    colWidth[d] = Math.max(colWidth[d] ?? 0, NODE_W[n.kind] ?? 250);
+    rowHeight[d] = Math.max(rowHeight[d] ?? 0, NODE_H[n.kind] ?? 84);
   }
-  const colX: number[] = [];
-  for (let d = 0; d < colWidth.length; d++) {
-    colX[d] = d === 0 ? PAD : colX[d - 1] + colWidth[d - 1] + COL_GAP;
+  const rowY: number[] = [];
+  for (let d = 0; d < rowHeight.length; d++) {
+    rowY[d] = d === 0 ? PAD : rowY[d - 1] + rowHeight[d - 1] + LEVEL_GAP;
   }
 
   const laid = new Map<number, LaidNode>();
-  let cursorY = PAD;
+  let cursorX = PAD;
 
-  const shift = (id: number, dy: number) => {
+  const shift = (id: number, dx: number) => {
     const item = laid.get(id);
     if (!item) return;
-    item.y += dy;
-    for (const c of item.childIds) shift(c, dy);
+    item.x += dx;
+    for (const c of item.childIds) shift(c, dx);
   };
 
   const place = (n: TreeNode): LaidNode => {
     const d = depth.get(n.id)!;
     const kids = children.get(n.id) ?? [];
-    const h = NODE_H[n.kind] ?? 88;
-    const w = NODE_W[n.kind] ?? 250;
+    const w = NODE_W[n.kind] ?? 236;
+    const h = NODE_H[n.kind] ?? 84;
 
     if (!kids.length) {
       const item: LaidNode = {
-        node: n, id: n.id, depth: d, x: colX[d], y: cursorY + h / 2, w, h, childIds: [],
+        node: n, id: n.id, depth: d, x: cursorX + w / 2, y: rowY[d], w, h, childIds: [],
       };
-      cursorY += h + ROW_GAP;
+      cursorX += w + SIBLING_GAP;
       laid.set(n.id, item);
       return item;
     }
@@ -143,24 +148,24 @@ export function layoutTree(nodes: TreeNode[]): Layout {
       node: n,
       id: n.id,
       depth: d,
-      x: colX[d],
-      y: (first.y + last.y) / 2,
+      x: (first.x + last.x) / 2,
+      y: rowY[d],
       w,
       h,
       childIds: placed.map((p) => p.id),
     };
 
-    // A tall parent between two short children would otherwise overflow its own
-    // subtree band and collide with whatever sits above it. Push the children
-    // down by half the deficit and re-centre — this is the one case a naive
-    // "centre on children" layout gets wrong.
-    const bandTop = first.y - first.h / 2;
-    const bandBottom = last.y + last.h / 2;
-    const deficit = h - (bandBottom - bandTop);
+    // A wide parent over two narrow children would otherwise overflow its own
+    // subtree band and collide with whatever sits beside it. Push the children
+    // right by half the deficit and re-centre — the one case a naive
+    // "centre over children" layout gets wrong.
+    const bandLeft = first.x - first.w / 2;
+    const bandRight = last.x + last.w / 2;
+    const deficit = w - (bandRight - bandLeft);
     if (deficit > 0) {
       for (const p of placed) shift(p.id, deficit / 2);
-      item.y += deficit / 2;
-      cursorY += deficit;
+      item.x += deficit / 2;
+      cursorX += deficit;
     }
 
     laid.set(n.id, item);
@@ -189,14 +194,14 @@ export function layoutTree(nodes: TreeNode[]): Layout {
       edges.push({
         from: item.id,
         to: cid,
-        d: edgePath(item.x + item.w, item.y, child.x, child.y),
+        d: edgePath(item.x, item.y + item.h, child.x, child.y),
       });
     }
   }
 
   const all = [...laid.values()];
-  const width = Math.max(...all.map((n) => n.x + n.w)) + PAD;
-  const height = Math.max(...all.map((n) => n.y + n.h / 2)) + PAD;
+  const width = Math.max(...all.map((n) => n.x + n.w / 2)) + PAD;
+  const height = Math.max(...all.map((n) => n.y + n.h)) + PAD;
 
   return { nodes: all, byId: laid, edges, ancestors, width, height };
 }

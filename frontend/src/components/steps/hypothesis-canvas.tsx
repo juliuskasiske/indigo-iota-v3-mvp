@@ -111,7 +111,7 @@ function NodeBox({
       onMouseEnter={() => onHover(n.id)}
       onMouseLeave={() => onHover(null)}
       onClick={() => onSelect(item)}
-      style={{ left: item.x, top: item.y - item.h / 2, width: item.w, height: item.h }}
+      style={{ left: item.x - item.w / 2, top: item.y, width: item.w, height: item.h }}
       className={cn(
         "absolute flex flex-col justify-center gap-1.5 overflow-hidden rounded-xl border p-3.5 text-left",
         "transition-[transform,box-shadow,opacity,border-color] duration-150 ease-out",
@@ -126,11 +126,12 @@ function NodeBox({
         dim && "opacity-35 saturate-50",
       )}
     >
-      {/* status spine */}
+      {/* Status band across the top — the edge the incoming arrow lands on.
+          A left spine would read as a bulleted list once siblings sit in a row. */}
       {n.kind !== "objective" && (
         <span
           aria-hidden
-          className="absolute inset-y-0 left-0 w-[3px] rounded-l-xl"
+          className="absolute inset-x-0 top-0 h-[3px] rounded-t-xl"
           style={{ background: color }}
         />
       )}
@@ -160,14 +161,11 @@ function NodeBox({
         </>
       ) : (
         <>
-          <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">
+          {/* No context preview here — at the zoom this board opens at, a third
+              line of small text is noise. It is the first thing in the drawer. */}
+          <span className="line-clamp-3 text-[13px] font-semibold leading-snug text-foreground">
             {n.label}
           </span>
-          {n.card?.context && (
-            <span className="line-clamp-2 text-[11.5px] leading-snug text-foreground-muted">
-              {n.card.context}
-            </span>
-          )}
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
             {badge && (
               <span
@@ -375,7 +373,11 @@ export function HypothesisCanvas({
 
   useEffect(() => {
     return () => {
-      viewMemory.set(runKey, viewRef.current);
+      // Only remember a view the user actually chose. Persisting unconditionally
+      // means the next mount sees a stored view, assumes they had panned, and
+      // never fits again — so after one tab switch the board opens stuck at 1:1
+      // with most of it off-screen.
+      if (userMoved.current) viewMemory.set(runKey, viewRef.current);
     };
   }, [runKey]);
 
@@ -383,18 +385,37 @@ export function HypothesisCanvas({
     const el = stageRef.current;
     if (!el || !layout.width) return;
     const { width: cw, height: ch } = el.getBoundingClientRect();
+    if (!cw || !ch) return;
     const k = clamp(Math.min(cw / layout.width, ch / layout.height, 1), MIN_K, MAX_K);
+    // Centre only when the content FITS. Once the zoom floor bites — a wide
+    // top-down tree hits it easily — centring yields a negative offset that
+    // parks half the board off-screen, so pin to the edge and let them pan.
+    const centre = (viewport: number, content: number) =>
+      content <= viewport ? (viewport - content) / 2 : 0;
     setView({
       k,
-      x: (cw - layout.width * k) / 2,
-      y: (ch - layout.height * k) / 2,
+      x: centre(cw, layout.width * k),
+      y: centre(ch, layout.height * k),
     });
   }, [layout.width, layout.height]);
 
-  // Re-fit as the tree grows, until the user takes over.
+  // Re-fit as the tree grows AND as the stage resizes, until the user takes
+  // over. The resize part matters on first paint: without it the fit can run
+  // against a stage that has not reached its final width, and the board opens
+  // scrolled off to one side.
   useEffect(() => {
     if (!userMoved.current) fit();
   }, [fit, layout.width, layout.height]);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (!userMoved.current) fit();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fit]);
 
   // Wheel must be a NON-PASSIVE native listener: React attaches wheel handlers
   // passively at the root, so preventDefault() inside onWheel is ignored and the
@@ -481,7 +502,7 @@ export function HypothesisCanvas({
             onPointerUp();
             setHover(null);
           }}
-          className="relative h-[620px] w-full cursor-grab touch-none active:cursor-grabbing"
+          className="relative h-[540px] w-full cursor-grab touch-none active:cursor-grabbing"
         >
           <div
             className="absolute origin-top-left"
