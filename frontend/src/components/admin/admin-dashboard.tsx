@@ -341,7 +341,7 @@ export function AdminDashboard({
                 title="Live"
               />
             ) : (
-              <span className="text-[9px] font-mono uppercase tracking-wider text-white/40">
+              <span className="text-[10px] text-white/40">
                 Preview
               </span>
             )}
@@ -379,7 +379,7 @@ export function AdminDashboard({
     return (
       <p
         className={cn(
-          "px-3 pb-1 text-[10px] font-mono uppercase tracking-[0.18em] text-white/40",
+          "px-3 pb-1 text-[11px] font-medium text-white/40",
           first ? "pt-1" : "pt-4",
         )}
       >
@@ -528,7 +528,7 @@ export function AdminDashboard({
       {/* Right column: top bar + scrollable content */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/70 px-5 backdrop-blur-md md:px-8">
-          <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-accent">
+          <span className="flex items-center gap-1.5 text-[13px] font-medium text-accent">
             <SectionIcon className="h-3.5 w-3.5" />
             {sectionLabel}
           </span>
@@ -554,7 +554,7 @@ export function AdminDashboard({
 
         <main className="mx-auto w-full max-w-5xl space-y-6 p-5 md:p-8">
           <div>
-            <p className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-accent">
+            <p className="mb-2 text-[13px] font-medium text-accent">
               {activeStep ? `Step ${activeStep.step} · ${me.org}` : me.org}
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -568,7 +568,7 @@ export function AdminDashboard({
                     Live
                   </span>
                 ) : (
-                  <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-mono uppercase tracking-wider text-accent">
+                  <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-medium text-accent">
                     Preview
                   </span>
                 ))}

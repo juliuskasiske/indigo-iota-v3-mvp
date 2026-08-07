@@ -452,7 +452,7 @@ export function AlignPanel({
           )}
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-accent">
+            <p className="text-[13px] font-semibold text-accent">
               The objective, in one sentence
             </p>
             {!ro && (
@@ -865,7 +865,7 @@ export function AlignPanel({
           </div>
 
           <div className="mt-4 rounded-lg border border-border bg-background/60 px-3.5 py-2.5">
-            <p className="text-[11px] uppercase tracking-wider text-foreground-subtle">
+            <p className="text-[12px] text-foreground-subtle">
               What you&apos;ve defined
             </p>
             <p className="mt-1 text-sm text-foreground-muted">{readback}</p>

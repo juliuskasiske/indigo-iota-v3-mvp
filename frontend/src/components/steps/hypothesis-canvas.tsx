@@ -143,7 +143,7 @@ function NodeBox({
 
       {n.kind === "objective" ? (
         <>
-          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-accent">
+          <span className="shrink-0 text-[11px] font-semibold text-accent">
             Objective
           </span>
           <span className="shrink-0 line-clamp-3 font-serif text-[15px] italic leading-snug text-foreground">
@@ -152,7 +152,7 @@ function NodeBox({
         </>
       ) : n.kind === "branch" ? (
         <>
-          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle">
+          <span className="shrink-0 text-[11px] font-semibold text-foreground-subtle">
             Branch
           </span>
           <span className="shrink-0 line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">
@@ -211,7 +211,7 @@ function ReviewActions({
   if (gone) {
     return (
       <div className="rounded-lg border border-border bg-background/60 px-3 py-2.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground-subtle">
+        <p className="text-[12px] font-semibold text-foreground-subtle">
           Discarded
         </p>
         {node.discard_reason && (
@@ -338,7 +338,7 @@ function NodeDetail({
   return (
     <div className="space-y-5 p-5">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle">
+        <p className="text-[12px] font-semibold text-foreground-subtle">
           {node.kind === "objective" ? "Objective" : node.kind === "branch" ? "Branch" : "Initiative"}
         </p>
         <h3
@@ -361,6 +361,46 @@ function NodeDetail({
           </span>
         )}
       </div>
+
+      <Section title="Review this node">
+        <ReviewActions node={node} onSubmit={onSubmit} />
+      </Section>
+
+      {/* What a reviewer already said about this node, oldest first, so the
+          current wording can be read against what caused it. */}
+      {node.interventions.length > 0 && (
+        <Section title="Review history">
+          <ol className="space-y-2">
+            {node.interventions.map((iv) => (
+              <li
+                key={iv.id}
+                className="rounded-lg border border-border bg-background/60 px-3 py-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "text-[11px] font-semibold",
+                      iv.kind === "discard" ? "text-destructive" : "text-accent",
+                    )}
+                  >
+                    {iv.kind === "discard" ? "Discarded" : "Feedback"}
+                  </span>
+                  <span className="text-[11px] text-foreground-subtle">
+                    {iv.status === "pending"
+                      ? "redoing…"
+                      : iv.status === "failed"
+                        ? `failed, ${iv.error}`
+                        : "applied"}
+                  </span>
+                </div>
+                <p className="mt-1 text-[13px] leading-snug text-foreground-muted">
+                  {iv.comment}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
 
       {node.rationale && (
         <Section title={node.kind === "objective" ? "The program" : "Why this branch"}>
@@ -479,45 +519,6 @@ function NodeDetail({
         </p>
       )}
 
-      {/* What a reviewer already said about this node, oldest first, so the
-          current wording can be read against what caused it. */}
-      {node.interventions.length > 0 && (
-        <Section title="Review history">
-          <ol className="space-y-2">
-            {node.interventions.map((iv) => (
-              <li
-                key={iv.id}
-                className="rounded-lg border border-border bg-background/60 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold uppercase tracking-wider",
-                      iv.kind === "discard" ? "text-destructive" : "text-accent",
-                    )}
-                  >
-                    {iv.kind === "discard" ? "Discarded" : "Feedback"}
-                  </span>
-                  <span className="text-[11px] text-foreground-subtle">
-                    {iv.status === "pending"
-                      ? "redoing…"
-                      : iv.status === "failed"
-                        ? `failed, ${iv.error}`
-                        : "applied"}
-                  </span>
-                </div>
-                <p className="mt-1 text-[13px] leading-snug text-foreground-muted">
-                  {iv.comment}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </Section>
-      )}
-
-      <Section title="Review this node">
-        <ReviewActions node={node} onSubmit={onSubmit} />
-      </Section>
     </div>
   );
 }
@@ -525,7 +526,7 @@ function NodeDetail({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground-subtle">
+      <h4 className="mb-2 text-[12px] font-semibold text-foreground-subtle">
         {title}
       </h4>
       {children}

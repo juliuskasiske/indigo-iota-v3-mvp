@@ -113,7 +113,7 @@ function LogFeed({ events }: { events: SwarmLogEvent[] }) {
       <ol className="max-h-72 space-y-0.5 overflow-y-auto">
         {events.map((e) => (
           <li key={e.id} className="flex items-baseline gap-2 rounded px-1.5 py-1 text-[13px]">
-            <span className="w-[76px] shrink-0 font-mono text-[10px] uppercase tracking-wide text-accent">
+            <span className="w-[76px] shrink-0 text-[11px] text-accent">
               {ROLE_LABEL[e.role] ?? e.role}
             </span>
             <span className="flex-1 text-foreground-muted">{e.message}</span>
