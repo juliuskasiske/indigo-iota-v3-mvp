@@ -21,10 +21,18 @@ export const NODE_W: Record<string, number> = {
   initiative: 208,
 };
 
+// Heights are measured from what the box's own content actually needs at these
+// font sizes and clamps — 28px padding, 6px gaps, and the line boxes:
+//   objective   15 eyebrow + 62 (3 lines @ 15px serif)              = 111
+//   branch      15 eyebrow + 37 (2 lines @ 13.5px) + 17 fact count  = 109
+//   initiative  54 (3 lines @ 13px) + 43 (badge row, may wrap)      = 131
+// Undershooting these does not clip cleanly: the children are flex items, so
+// the browser CRUSHES the text to fit and the clamp slices glyphs mid-line.
+// The box markup pairs this with shrink-0 so text can never be squashed again.
 export const NODE_H: Record<string, number> = {
-  objective: 100,
-  branch: 80,
-  initiative: 112,
+  objective: 116,
+  branch: 114,
+  initiative: 136,
 };
 
 export interface LaidNode {

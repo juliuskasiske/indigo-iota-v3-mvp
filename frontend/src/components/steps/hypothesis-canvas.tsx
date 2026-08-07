@@ -138,23 +138,23 @@ function NodeBox({
 
       {n.kind === "objective" ? (
         <>
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-accent">
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-accent">
             Objective
           </span>
-          <span className="line-clamp-3 font-serif text-[15px] italic leading-snug text-foreground">
+          <span className="shrink-0 line-clamp-3 font-serif text-[15px] italic leading-snug text-foreground">
             {n.label}
           </span>
         </>
       ) : n.kind === "branch" ? (
         <>
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle">
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle">
             Branch
           </span>
-          <span className="line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">
+          <span className="shrink-0 line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">
             {n.label}
           </span>
           {n.evidence.length > 0 && (
-            <span className="text-[11px] text-foreground-subtle">
+            <span className="shrink-0 text-[11px] text-foreground-subtle">
               {n.evidence.length} {n.evidence.length === 1 ? "fact" : "facts"}
             </span>
           )}
@@ -163,10 +163,10 @@ function NodeBox({
         <>
           {/* No context preview here — at the zoom this board opens at, a third
               line of small text is noise. It is the first thing in the drawer. */}
-          <span className="line-clamp-3 text-[13px] font-semibold leading-snug text-foreground">
+          <span className="shrink-0 line-clamp-3 text-[13px] font-semibold leading-snug text-foreground">
             {n.label}
           </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+          <span className="mt-0.5 flex shrink-0 flex-wrap items-center gap-1.5">
             {badge && (
               <span
                 className="rounded-full px-2 py-0.5 text-[11px] font-medium"
