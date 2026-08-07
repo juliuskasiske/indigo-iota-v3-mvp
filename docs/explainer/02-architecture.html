@@ -115,19 +115,23 @@ flowchart TB
   mail half is the IMAP host while the login half lives entirely inside our own control plane.
   <a href="05-flows.html">Chapter 5</a> walks both sign-in paths.</p>
 
-  <h2>Inside the backend: the eight modules</h2>
+  <h2>Inside the backend: the modules</h2>
   <p>Box 2 above is one container, but inside it the Python code is split into folders that each own one
-  concern. You will meet all of these again; this is the map.</p>
+  concern. You will meet all of these again; this is the map. The last column says which of the two layers a
+  folder belongs to, where that question makes sense.</p>
   <table>
-    <tr><th>Folder under <code>backend/src/</code></th><th>Owns</th><th>Layer</th></tr>
+    <tr><th>Under <code>backend/src/</code></th><th>Owns</th><th>Layer</th></tr>
     <tr><td><code>api/</code></td><td>Every web address the browser can call, and the permission check on each one</td><td>both</td></tr>
-    <tr><td><code>auth/</code></td><td>Sign-in, sessions, cookies, and the two-factor codes</td><td>—</td></tr>
+    <tr><td><code>auth/</code></td><td>Sign-in, sessions, cookies, the two-factor codes, and the tokens an outside assistant uses</td><td>—</td></tr>
     <tr><td><code>tenancy/</code></td><td>Creating a customer, creating their database, running migrations on it</td><td>—</td></tr>
+    <tr><td><code>onboarding/</code></td><td>The command-line steps for wiring up a new customer's Microsoft permissions</td><td>—</td></tr>
     <tr><td><code>ingestion/</code></td><td>The four-stage pipeline: capture, triage, comprehend, index</td><td>context</td></tr>
     <tr><td><code>db/</code></td><td>The SQL. One module per group of tables; nothing else writes SQL</td><td>both</td></tr>
     <tr><td><code>agents/</code></td><td>The diagnosis engine: the seven agents, their prompts, and the shared model client</td><td>diagnosis</td></tr>
-    <tr><td><code>search/</code></td><td>Finding relevant text: keyword and meaning-based search combined</td><td>both</td></tr>
     <tr><td><code>billing/</code></td><td>Counting what each AI call cost and stopping when credits run out</td><td>both</td></tr>
+    <tr><td><code>seed/</code></td><td>The handful of people and companies a brand-new workspace can start with</td><td>context</td></tr>
+    <tr><td><code>dashboard/</code></td><td>A small internal graph viewer for developers, run separately from the product</td><td>—</td></tr>
+    <tr><td><code>search.py</code>, <code>qa.py</code></td><td>Two single files rather than folders: finding relevant text, and writing a cited answer from what was found</td><td>both</td></tr>
   </table>
   <p>The rule that keeps this honest: <strong>anything that writes SQL lives in <code>db/</code></strong>. The
   agents do not open database connections and compose queries; they call a function in

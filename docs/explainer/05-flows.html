@@ -335,47 +335,71 @@ flowchart TB
   cost is metered, the exchange is logged, and the answer returns with its sources.</p>
 
   <!-- ===================== FLOW D: SEED ===================== -->
-  <h2>Flow D, Filling a brain from a website (the demo seeder)</h2>
-  <p>To make a believable demo without a real mailbox, the seeder reads a public website and runs it through the
-  <em>same</em> comprehend pipeline as real email — skipping only capture + triage, since there's no mailbox to
-  sweep. That's how the Acme demo tenant got its data.</p>
+  <h2>Flow D, Filling a brain without a mailbox (the demo seeder)</h2>
+  <p>Demonstrating the product needs a workspace with something in it, and you cannot borrow a real company's
+  mail to get one. So there is an invented company — <strong>Nordwind Analytics</strong> — written as 27 emails
+  and 6 documents that live in the repository.</p>
+  <p>The important word is <strong>replay</strong>, not <em>insert</em>. The seeder does not paste rows into
+  tables. It pushes the invented corpus through the same four phases real mail goes through, including the
+  scope filter, which is free to reject some of it. The brain that comes out is a genuine one, built the
+  genuine way — which is the only reason a demo run on it proves anything.</p>
   <div class="mermaid">
 flowchart TB
-  run["Run the seeder<br/><code>seed/website.py, seed_from_website()</code>"]
-  ci["Scrape brand identity (logo/colours/font)<br/><code>seed/ci.py, extract_ci()</code>"]
-  crawl["Crawl homepage + about/team pages<br/><code>seed/website.py, _crawl()</code>"]
-  anchor["Pre-create the company brain page<br/><code>seed/website.py, _seed_company_page()</code>"]
-  run --> ci --> crawl --> anchor
-  pipe["Feed each page through the SAME pipeline<br/><code>ingestion/comprehend/pipeline.py, process_text()</code>"]
-  anchor --> pipe
-  dbout[("Brain pages, entities, relationships, chunks<br/>land in the tenant DB")]
-  pipe --> dbout
-  note["Result: the live Ask page now has real data to answer from"]
+  corpus["The invented corpus<br/><code>fixtures/demo_nordwind/emails.py</code> + <code>documents/</code>"]
+  run["Run the seeder<br/><code>seed_demo.py, main()</code>"]
+  corpus --> run
+
+  norm["Turn each one into the standard shape<br/><code>seed_demo.py, _event()</code> → <code>capture/normalize.py</code>"]
+  gate["The workspace's own scope filter runs<br/><code>triage/classify.py</code>"]
+  run --> norm --> gate
+
+  back["Emails: the historical backfill path<br/><code>capture/mail.py, backfill_mailbox()</code>"]
+  docs["Documents: the shared-folder path<br/><code>source='file'</code> captured_events"]
+  gate --> back
+  gate --> docs
+
+  ev[("captured_events")]
+  back --> ev
+  docs --> ev
+
+  comp["Comprehend + index, unchanged<br/><code>ingestion/runner.py</code>"]
+  ev -->|"--comprehend"| comp
+  dbout[("Brain pages, entities, relationships, chunks")]
+  comp --> dbout
+  note["A workspace you can ask questions of, and run a diagnosis on"]
   dbout -.-> note
   </div>
   <h3>Step by step</h3>
   <ol>
-    <li><code>seed/website.py, seed_from_website()</code> — the CLI entry: extract brand identity, then seed the
-    graph in one call.</li>
-    <li><code>seed/ci.py, extract_ci()</code> — scrapes the site's <em>corporate identity</em> (logo, brand
-    colour, font) so the demo dashboard can restyle itself — a distinct job from the email→brain pipeline.</li>
-    <li><code>seed/website.py, seed_with_ci()</code> — drives the seeding using that pre-extracted identity.</li>
-    <li><code>seed/website.py, _seed_company_page()</code> — pre-creates the target company's brain page with the
-    user-supplied canonical name, so later person→company references canonicalize onto it cleanly.</li>
-    <li><code>seed/website.py, _crawl()</code> — fetches the homepage plus a few relevant same-domain pages
-    (about / team / leadership), de-duplicated by URL.</li>
-    <li><code>seed/website.py, _page_text()</code> — strips nav/script/footer and returns the readable text of
-    each page.</li>
-    <li><code>ingestion/comprehend/pipeline.py, ComprehendPipeline.process_text()</code> — the <em>exact same</em>
-    per-entity comprehend flow Flow B uses, run on each page's text with today's date.</li>
-    <li><code>tenancy/provision.py</code> — ensures the tenant and its brain DB exist before any write (when
-    seeding a fresh tenant).</li>
-    <li>The graph + chunk writes land via the same <code>graph_sync.py</code> / <code>chunker</code> /
-    <code>embeddings</code> path as Flow B — entities, relationships, and chunks in the tenant brain DB.</li>
+    <li><code>fixtures/demo_nordwind/emails.py</code> and <code>documents/</code> — the corpus itself. It is
+    written deliberately: buried in the correspondence are eight ways the invented company is losing money
+    (discounting past its own cap, security reviews stalling deals, expansion paying less commission than new
+    business, and so on). None of them is stated outright anywhere; each has to be assembled from several
+    messages. That is what makes it a fair test of both layers.</li>
+    <li><code>seed_demo.py, main()</code> — the command-line entry.
+    <code>--classify-only</code> runs just the scope filter and prints where each message lands, without
+    writing anything, so you can check the corpus still passes after editing the scope rules.
+    <code>--comprehend</code> continues into the metered AI half.</li>
+    <li><code>seed_demo.py, _event()</code> → <code>ingestion/capture/normalize.py</code> — each invented
+    message is turned into exactly the shape a real captured message has.</li>
+    <li><code>ingestion/triage/classify.py</code> — the workspace's own scope filter runs on the demo corpus
+    like any other mail. Some of it is meant to be rejected; a demo where nothing is ever filtered would
+    misrepresent how the product behaves.</li>
+    <li><code>ingestion/capture/mail.py, backfill_mailbox()</code> — emails go through the historical path
+    rather than the live-sweep one, because the live path only accepts mail newer than the last sweep and the
+    invented mail is deliberately back-dated.</li>
+    <li>Documents are stored as <code>source='file'</code> captured events, the same way a shared Google Drive
+    folder's files are, and are chunked with the local embedding model.</li>
+    <li><code>ingestion/runner.py</code> — with <code>--comprehend</code>, the ordinary comprehend and index
+    driver picks the new events up, exactly as in Flow B. This spends real credits against the workspace, just
+    as a customer's own backfill would.</li>
+    <li><code>tenancy/provision.py, tenant_db_name()</code> — resolves which brain database the slug refers to,
+    so the seeder writes into the right workspace and no other.</li>
   </ol>
-  <p><strong>In one sentence:</strong> the seeder scrapes a website's identity and text, pre-anchors the company
-  entity, then pushes the page text through the exact same comprehend pipeline real email uses — proving the
-  pipeline works and giving the demo something to talk about.</p>
+  <p><strong>In one sentence:</strong> an invented company's mail and documents are replayed through the real
+  capture, triage, comprehend and index path, so the demo workspace is a real brain rather than a fixture —
+  and the value leaks the diagnosis layer is supposed to find are genuinely hidden in it rather than
+  pre-labelled.</p>
 
   <!-- ===================== FLOW E: CREDITS ===================== -->
   <h2>Flow E, Credits &amp; billing (money in, money out)</h2>

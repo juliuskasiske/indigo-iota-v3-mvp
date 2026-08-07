@@ -27,16 +27,17 @@
 <main>
   <p class="kicker">Chapter 4</p>
   <h1>Every page, and what you can do on it</h1>
-  <p class="lead">The website has nine screens. Every screenshot below is the <em>real</em> app running on a
+  <p class="lead">The website has twelve screens. Every screenshot below is the <em>real</em> app running on a
   laptop — not a mock-up of a mock-up. For each one you'll see what it shows, what buttons actually do, and
   whether it's wired to the live backend or is a polished demo of a feature not yet connected.</p>
 
   <div class="callout">
     <strong>One thing to understand first: "live" vs "demo".</strong> The app is half real engine, half
-    showroom. Two screens — <strong>Admin</strong> and <strong>Ask</strong> — talk to the real backend and
-    the real database. The other seven are a convincing <em>demo</em>: they look and behave like the finished
-    product, but their data is hard-coded in the browser and resets on refresh. Each section is tagged so you
-    always know which is which.
+    showroom. Five screens talk to the real backend and the real database — <strong>Admin</strong>,
+    <strong>Ask</strong>, the owner-only <strong>Control Tower</strong>, and the two sign-in screens people
+    reach from an emailed link. The other seven are a convincing <em>demo</em>: they look and behave like the
+    finished product, but their data is hard-coded in the browser and resets on refresh. Each section is tagged
+    so you always know which is which.
   </div>
 
   <h2>How to read the tags</h2>
@@ -60,13 +61,13 @@
       <td>A small set of functions that make real HTTP calls to the backend (<code>me()</code>,
       <code>ask()</code>, <code>credits()</code>…).</td>
       <td><code>frontend/src/lib/api.ts</code></td>
-      <td>Admin, Ask</td>
+      <td>Admin, Ask, Control Tower, accept-invite, reset-password</td>
     </tr>
     <tr>
       <td><span class="pill mock">the demo store</span></td>
       <td>An in-browser store of fake projects, seeded from a fixtures file. Lives only in memory.</td>
       <td><code>frontend/src/lib/store/projects-store.tsx</code> + <code>lib/mock/data.ts</code></td>
-      <td>Home, Projects, New, View, Check-in, Settings</td>
+      <td>Home, Demo, Projects, New, View, Check-in, Settings</td>
     </tr>
   </table>
 
@@ -296,8 +297,16 @@
     <tr><td>7</td><td>Check-in</td><td><code>/projects/check-in</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
     <tr><td>8</td><td>Settings</td><td><code>/settings</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
     <tr><td>9</td><td>Control Tower</td><td><code>/control</code></td><td><span class="pill live">live</span></td><td>API client</td></tr>
+    <tr><td>10</td><td>Accept invite</td><td><code>/accept-invite</code></td><td><span class="pill live">live</span></td><td>API client</td></tr>
+    <tr><td>11</td><td>Reset password</td><td><code>/reset-password</code></td><td><span class="pill live">live</span></td><td>API client</td></tr>
+    <tr><td>12</td><td>Demo dashboard</td><td><code>/demo</code></td><td><span class="pill mock">demo</span></td><td>demo store</td></tr>
   </table>
-  <div class="callout">Three live pages, six demo pages, all sharing one shell. The next chapter shows what
+  <p>The last three are not described individually above. <strong>Accept invite</strong> and <strong>reset
+  password</strong> are the two screens a person reaches from a link in an email — one to set a first password
+  and enrol an authenticator app, the other to replace a forgotten password. Both are covered as part of
+  signing in, in <a href="05-flows.html">Chapter 5</a>. <strong>/demo</strong> is a second illustrative
+  dashboard kept apart from Home so the two can be changed independently.</p>
+  <div class="callout">Five live pages, seven demo pages, all sharing one shell. The next chapter shows what
   actually <em>happens</em> when you click on the live ones.</div>
 
   <div class="pager">

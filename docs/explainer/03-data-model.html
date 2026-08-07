@@ -100,7 +100,7 @@ flowchart TB
   <!-- ============================ BRAIN ============================ -->
   <h2>Database 1 — the customer brain</h2>
   <p>Applied identically to <em>every</em> customer's own database (<code>backend/migrations/tenant/*.sql</code>),
-  holding only that customer's data. All thirteen tables are below, wired by their real foreign keys. <strong>Drag
+  holding only that customer's data. The nineteen memory tables are below, wired by their real foreign keys. (The seven diagnosis tables get their own diagram after this one.) <strong>Drag
   to pan, scroll to zoom, and click any table</strong> (in the diagram or the chips) to read what it holds.</p>
 
   <div class="erwrap" id="brainEr">
@@ -175,6 +175,21 @@ erDiagram
   drive detection. What used to be hardcoded ("person | company | project" in the agent prompt,
   "works_at | leads | …" in a frozenset) is now config seeded at onboarding, and <code>entities.type</code> /
   <code>relationships.predicate</code> are foreign-keyed onto it.</div>
+
+  <h2>Five more tables in the same database <span class="small">(settings and bookkeeping)</span></h2>
+  <p>These are left out of the diagram above because they connect to nothing — no foreign keys in or out. They
+  hold settings a person chose, or a tally the software keeps. They are listed here so the chapter accounts for
+  every table in a customer's database, not just the interesting ones.</p>
+  <table>
+    <tr><th>Table</th><th>What it holds</th></tr>
+    <tr><td><code>capture_sources</code></td><td>Which mailboxes and shared folders this workspace pulls from, and for each one which provider it is and how to reach it. A Microsoft mailbox needs only its address; an IMAP one also carries a host, port and an app password stored encrypted; a Google Drive folder carries its folder id and name. This list used to live in an environment variable, which meant changing it needed a deploy.</td></tr>
+    <tr><td><code>capture_duplicates</code></td><td>A note that a given message was seen again on a later sweep. Only the identifier and the sweep, never the content — enough to report "40 fetched, 28 already had" without storing anything twice.</td></tr>
+    <tr><td><code>comprehend_settings</code></td><td>A single row of "how thoroughly should we read": how hard to look for relationships, which agents get extra context and how much of it, and whether documents from a shared folder go into the graph at all. Every one of these dials moves the cost per email, which is why they are a customer setting rather than a constant.</td></tr>
+    <tr><td><code>delivery_todos</code></td><td>The Delivery tab's pool, one current row per member: what the brain thinks that person has to act on next, when it was worked out, and which suggestions they have dismissed. The timestamp is the gate — the three-hourly job and the refresh button both check it before paying to recompute.</td></tr>
+    <tr><td><code>tenant_onboarding</code></td><td>One row recording that the setup wizard was finished, and by whom. This is the switch between the once-only wizard and the steady-state dashboard, where all the same settings remain editable.</td></tr>
+  </table>
+  <div class="callout">There is also <code>schema_migrations</code>, which is the migration runner's own
+  bookkeeping: one row per numbered file already applied. It is described at the end of this chapter.</div>
 
   <!-- ============================ DIAGNOSIS ============================ -->
   <h2>Database 1, part two — the diagnosis tables</h2>
