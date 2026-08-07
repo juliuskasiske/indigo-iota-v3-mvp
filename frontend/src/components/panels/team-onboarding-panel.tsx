@@ -305,7 +305,7 @@ export function TeamOnboardingPanel({ project }: { project: Project }) {
       {/* Sidebar */}
       <div className="space-y-5">
         <Card className="p-4">
-          <div className="text-xs uppercase tracking-wider text-foreground-subtle mb-3">
+          <div className="text-xs text-foreground-subtle mb-3">
             What goes in the brief
           </div>
           <ul className="space-y-2.5 text-xs text-foreground-muted leading-relaxed">
@@ -326,7 +326,7 @@ export function TeamOnboardingPanel({ project }: { project: Project }) {
         </Card>
 
         <Card className="p-4">
-          <div className="text-xs uppercase tracking-wider text-foreground-subtle mb-2">
+          <div className="text-xs text-foreground-subtle mb-2">
             Already on the team
           </div>
           <div className="space-y-2">

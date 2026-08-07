@@ -76,7 +76,7 @@ export function ProjectView({ project }: { project: Project }) {
           />
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent">
+              <p className="text-xs text-accent">
                 {project.client}
               </p>
               <span className="text-foreground-subtle text-xs">·</span>

@@ -138,7 +138,7 @@ export function AskBox({
     <div className="grid gap-6 md:grid-cols-[240px_1fr]">
       {/* History sidebar */}
       <aside className="order-2 md:order-1">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+        <p className="mb-2 flex items-center gap-1.5 text-xs text-foreground-subtle">
           <History className="h-3.5 w-3.5" />
           Recent
         </p>
@@ -245,7 +245,7 @@ function Answer({
       {result.sources.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+            <p className="text-xs text-foreground-subtle">
               Sources
             </p>
             {citedCount > 0 && (

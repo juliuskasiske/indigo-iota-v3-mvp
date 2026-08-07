@@ -184,7 +184,7 @@ export function PlatformUsagePanel({
 
             {/* Per-workspace */}
             <div className="mt-6 pt-1.5">
-              <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-wide text-foreground-subtle">
+              <div className="mb-3.5 text-[11px] font-semibold text-foreground-subtle">
                 By workspace · {range}
               </div>
               <div className="overflow-x-auto">
@@ -237,7 +237,7 @@ export function PlatformUsagePanel({
 
             {/* Per-member, grouped by workspace */}
             <div className="mt-7 pt-1.5">
-              <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-wide text-foreground-subtle">
+              <div className="mb-3.5 text-[11px] font-semibold text-foreground-subtle">
                 By member · {range}
               </div>
               <div className="overflow-x-auto">

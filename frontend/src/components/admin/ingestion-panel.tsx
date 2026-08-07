@@ -143,7 +143,7 @@ function Body({ data }: { data: Ingestion }) {
 
       {/* Today's running tally across every run so far today. */}
       <div className="space-y-2 border-t border-border/40 pt-3">
-        <p className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+        <p className="text-xs text-accent">
           Today
         </p>
         <div className="grid grid-cols-5 gap-2">
@@ -158,7 +158,7 @@ function Body({ data }: { data: Ingestion }) {
       {/* Daily fetched vs included over the last 30 days. */}
       <div className="space-y-2 border-t border-border/40 pt-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+          <p className="text-xs text-accent">
             Last 30 days
           </p>
           <div className="flex items-center gap-4 text-[11px] text-foreground-subtle">

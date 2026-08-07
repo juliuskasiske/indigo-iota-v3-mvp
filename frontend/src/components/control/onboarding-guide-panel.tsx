@@ -53,7 +53,7 @@ export function OnboardingGuidePanel() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-2">
+        <p className="text-xs text-accent mb-2">
           Runbook
         </p>
         <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -177,7 +177,7 @@ function Group({
   return (
     <section className="space-y-2.5">
       <div className="flex items-baseline gap-2 px-1">
-        <span className="text-xs font-mono uppercase tracking-[0.2em] text-accent">
+        <span className="text-xs text-accent">
           {label}
         </span>
         <span className="text-xs text-foreground-subtle">{hint}</span>
@@ -1064,7 +1064,7 @@ function Why({ children }: { children: React.ReactNode }) {
 function ClickPath({ steps }: { steps: string[] }) {
   return (
     <p className="mt-2 flex flex-wrap items-center gap-1 text-[12px] text-foreground-subtle">
-      <span className="mr-0.5 font-medium uppercase tracking-wide">Where</span>
+      <span className="mr-0.5 font-medium">Where</span>
       {steps.map((s, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3 opacity-50" />}

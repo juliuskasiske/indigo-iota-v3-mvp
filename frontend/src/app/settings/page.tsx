@@ -25,7 +25,7 @@ export default function SettingsPage() {
     <AppShell>
       <div className="relative z-10 p-6 md:p-10 max-w-3xl mx-auto">
         <div className="mb-8">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-3">
+          <p className="text-xs text-accent mb-3">
             Settings
           </p>
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
@@ -143,7 +143,7 @@ export default function SettingsPage() {
 function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[180px_1fr] items-center gap-4 py-1.5 border-b border-border/40 last:border-0">
-      <div className="text-xs uppercase tracking-wider text-foreground-subtle">{label}</div>
+      <div className="text-xs text-foreground-subtle">{label}</div>
       <div className="text-foreground">{value}</div>
     </div>
   );

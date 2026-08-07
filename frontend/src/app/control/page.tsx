@@ -200,7 +200,7 @@ export default function ControlTowerPage() {
       {/* Right column: top bar + scrollable content */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/70 px-5 backdrop-blur-md md:px-8">
-          <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-accent">
+          <span className="flex items-center gap-1.5 text-xs text-accent">
             <TowerControl className="h-3.5 w-3.5" />
             Control Tower
           </span>
@@ -227,7 +227,7 @@ export default function ControlTowerPage() {
 
         <main className="mx-auto w-full max-w-5xl space-y-6 p-5 md:p-8">
           <div>
-            <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-2">
+            <p className="text-xs text-accent mb-2">
               Platform owner
             </p>
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">

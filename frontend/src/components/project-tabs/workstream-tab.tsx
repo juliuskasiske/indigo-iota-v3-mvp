@@ -118,7 +118,7 @@ export function ProjectWorkstreamTab({ project }: { project: Project }) {
     <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
       {/* --- Left: workstream selector --- */}
       <aside>
-        <div className="text-[10px] uppercase tracking-wider text-foreground-subtle font-mono mb-2 px-2">
+        <div className="text-[11px] text-foreground-subtle mb-2 px-2">
           {project.workstreams.length} workstreams
         </div>
         <nav className="flex flex-col gap-1">
@@ -173,7 +173,7 @@ export function ProjectWorkstreamTab({ project }: { project: Project }) {
       <section className="space-y-6">
         {/* Page title + context */}
         <div>
-          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-foreground-subtle mb-1.5">
+          <p className="text-[11px] text-foreground-subtle mb-1.5">
             Workstream
           </p>
           <h2 className="text-2xl font-semibold tracking-tight mb-2">
@@ -185,7 +185,7 @@ export function ProjectWorkstreamTab({ project }: { project: Project }) {
           <div className="mt-4 flex items-center gap-5 flex-wrap text-xs">
             {owner && (
               <span className="inline-flex items-center gap-2 text-foreground-muted">
-                <span className="text-foreground-subtle uppercase tracking-wider text-[10px]">
+                <span className="text-foreground-subtle text-[11px]">
                   Owner
                 </span>
                 <Avatar className="h-5 w-5">
@@ -197,7 +197,7 @@ export function ProjectWorkstreamTab({ project }: { project: Project }) {
               </span>
             )}
             <span className="inline-flex items-center gap-2 text-foreground-muted">
-              <span className="text-foreground-subtle uppercase tracking-wider text-[10px]">
+              <span className="text-foreground-subtle text-[11px]">
                 Progress
               </span>
               <span className="inline-block w-24 relative h-1 rounded-full overflow-hidden bg-background-soft">
@@ -426,7 +426,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </span>
       <div className="flex items-center gap-2 mb-1">
         <Icon className={cn("h-3.5 w-3.5", ACTIVITY_COLOR[item.type])} />
-        <span className="text-[10px] uppercase tracking-wider font-mono text-foreground-subtle">
+        <span className="text-[11px] text-foreground-subtle">
           {item.type}
         </span>
         <span className="ml-auto text-[10px] text-foreground-subtle font-mono">

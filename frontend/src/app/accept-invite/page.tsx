@@ -143,7 +143,7 @@ function AcceptInviteInner() {
         <div className="rounded-xl border border-border bg-background-elevated p-6 shadow-sm">
           <div className="flex items-center gap-2 text-accent mb-1">
             <ShieldCheck className="h-5 w-5" />
-            <span className="text-xs font-mono uppercase tracking-[0.18em]">
+            <span className="text-xs">
               Set up your account
             </span>
           </div>

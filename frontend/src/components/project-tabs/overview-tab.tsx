@@ -128,7 +128,7 @@ export function ProjectOverviewTab({ project }: { project: Project }) {
               </div>
             ))}
             <div className="border-t border-border pt-3 mt-2">
-              <div className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-2">
+              <div className="text-[11px] text-foreground-subtle mb-2">
                 Partners
               </div>
               {project.partners.map((person) => (
@@ -162,7 +162,7 @@ export function ProjectOverviewTab({ project }: { project: Project }) {
             {/* What the manager configured during init */}
             <div className="mt-4 pt-3 border-t border-border space-y-3">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1.5">
+                <div className="text-[11px] text-foreground-subtle mb-1.5">
                   Project window
                 </div>
                 <div className="text-xs text-foreground font-mono">
@@ -172,7 +172,7 @@ export function ProjectOverviewTab({ project }: { project: Project }) {
 
               {project.slackChannels.length > 0 && (
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1.5">
+                  <div className="text-[11px] text-foreground-subtle mb-1.5">
                     Slack channels
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -190,7 +190,7 @@ export function ProjectOverviewTab({ project }: { project: Project }) {
 
               {project.sharepointPath && (
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1.5">
+                  <div className="text-[11px] text-foreground-subtle mb-1.5">
                     SharePoint folder
                   </div>
                   <div className="text-[11px] text-foreground-muted font-mono break-all">
@@ -202,7 +202,7 @@ export function ProjectOverviewTab({ project }: { project: Project }) {
 
             {/* What Iota has synced so far */}
             <div className="mt-4 pt-3 border-t border-border space-y-2 text-xs">
-              <div className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1">
+              <div className="text-[11px] text-foreground-subtle mb-1">
                 Activity
               </div>
               <MetaRow label="Brain pages" value={`${project.brainPages}`} />
@@ -303,7 +303,7 @@ function ActivityRow({
       </span>
       <div className="flex items-center gap-2 mb-1">
         <Icon className={cn("h-3.5 w-3.5", activityColor[item.type])} />
-        <span className="text-[10px] uppercase tracking-wider font-mono text-foreground-subtle">
+        <span className="text-[11px] text-foreground-subtle">
           {item.type}
         </span>
         {workstream && (
@@ -327,7 +327,7 @@ function ActivityRow({
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-foreground-subtle uppercase tracking-wider text-[10px]">
+      <span className="text-foreground-subtle text-[11px]">
         {label}
       </span>
       <span className="font-mono text-foreground">{value}</span>

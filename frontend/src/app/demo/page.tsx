@@ -43,7 +43,7 @@ export default function Dashboard() {
         {/* Hero */}
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-3">
+            <p className="text-xs text-accent mb-3">
               Welcome back, Maya
             </p>
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
@@ -160,7 +160,7 @@ export default function Dashboard() {
                   <div className="mt-auto pt-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider text-foreground-subtle">
+                        <span className="text-[11px] text-foreground-subtle">
                           Progress
                         </span>
                         <span className="text-sm font-mono text-foreground">
@@ -168,7 +168,7 @@ export default function Dashboard() {
                         </span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-[10px] uppercase tracking-wider text-foreground-subtle">
+                        <span className="text-[11px] text-foreground-subtle">
                           Last sync
                         </span>
                         <RelativeTime
@@ -250,7 +250,7 @@ function StatCard({
     <Card>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <span className="text-xs uppercase tracking-wider text-foreground-subtle">
+          <span className="text-xs text-foreground-subtle">
             {label}
           </span>
           <Icon className="h-4 w-4 text-foreground-subtle" />

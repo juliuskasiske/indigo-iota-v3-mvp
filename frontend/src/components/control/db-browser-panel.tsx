@@ -229,7 +229,7 @@ export function DbBrowserPanel({
         <div className="grid gap-4 md:grid-cols-[14rem_1fr]">
           {/* Table list */}
           <div className="space-y-1.5">
-            <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-foreground-subtle">
+            <p className="px-1 text-[11px] font-medium text-foreground-subtle">
               Tables
             </p>
             {loadingTables ? (

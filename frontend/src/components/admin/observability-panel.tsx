@@ -733,7 +733,7 @@ function DeliverySyncTable({
       {/* Request type 1: agenda inference (the periodic / on-demand pool sync). */}
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-subtle">
+          <p className="text-[11px] font-semibold text-foreground-subtle">
             Sync · agenda inference
           </p>
           <div className="flex items-center gap-3">
@@ -825,7 +825,7 @@ function DeliverySyncTable({
 
       {/* Request type 2: document drafting & edits — reserved (not yet active). */}
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground-subtle">
+        <p className="mb-2 text-[11px] font-semibold text-foreground-subtle">
           Document drafting &amp; edits
         </p>
         <div className="flex items-center gap-3 rounded-lg border border-dashed border-border/60 px-4 py-5 text-xs text-foreground-subtle">
@@ -1067,7 +1067,7 @@ function Section({
 }) {
   return (
     <div>
-      <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.06em] text-foreground-subtle">
+      <p className="mb-1.5 text-[11px] text-foreground-subtle">
         {label}
       </p>
       {children}
@@ -1084,7 +1084,7 @@ function Field({
 }) {
   return (
     <div>
-      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">
+      <p className="mb-1 text-[11px] font-medium text-foreground-subtle">
         {label}
       </p>
       {children}

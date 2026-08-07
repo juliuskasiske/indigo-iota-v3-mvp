@@ -30,7 +30,7 @@ export default function ProjectsListPage() {
       <div className="relative z-10 p-6 md:p-10 max-w-7xl mx-auto">
         <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-3">
+            <p className="text-xs text-accent mb-3">
               All engagements
             </p>
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">

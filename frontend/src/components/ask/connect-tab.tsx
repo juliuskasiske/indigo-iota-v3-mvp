@@ -78,7 +78,7 @@ export function ConnectTab({
 
       {/* The endpoint */}
       <div className="space-y-2">
-        <p className="text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+        <p className="text-xs text-foreground-subtle">
           Your MCP server endpoint
         </p>
         <CopyField value={mcpUrl} />

@@ -164,7 +164,7 @@ export function MorningCheckIn({ project }: { project: Project }) {
       {/* Header */}
       <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-[0.2em] text-accent mb-3">
+          <p className="inline-flex items-center gap-1.5 text-xs text-accent mb-3">
             <Sun className="h-3 w-3" />
             Morning check-in · {formatDate(checkIn.date, { weekday: "long", month: "long", day: "numeric" })}
           </p>
@@ -181,7 +181,7 @@ export function MorningCheckIn({ project }: { project: Project }) {
             <div className="text-3xl font-semibold font-mono leading-none">
               {totalTasks}
             </div>
-            <span className="text-xs text-foreground-subtle uppercase tracking-wider">
+            <span className="text-xs text-foreground-subtle">
               tasks queued
             </span>
           </div>
@@ -194,7 +194,7 @@ export function MorningCheckIn({ project }: { project: Project }) {
       {/* Yesterday recap */}
       <Card className="mb-8 overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-background-soft/40 flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground-subtle">
+          <span className="inline-flex items-center gap-2 text-xs text-foreground-subtle">
             <Sparkles className="h-3 w-3 text-accent" />
             Yesterday recap
           </span>

@@ -160,7 +160,7 @@ export function DiligencePanel({
             </label>
 
             <div className="space-y-2">
-              <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-foreground-subtle">
+              <p className=" text-[11px] text-foreground-subtle">
                 Relationship pairing
               </p>
               <div className="space-y-2">
@@ -198,7 +198,7 @@ export function DiligencePanel({
             </div>
 
             <div className="space-y-2">
-              <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-foreground-subtle">
+              <p className=" text-[11px] text-foreground-subtle">
                 Brain-page context per agent
               </p>
               <p className="text-xs text-foreground-muted">

@@ -46,7 +46,7 @@ export default function Landing() {
           {/* Divider */}
           <div className="my-7 flex w-full items-center gap-3">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+            <span className="text-[11px] text-foreground-subtle">
               New here?
             </span>
             <span className="h-px flex-1 bg-border" />

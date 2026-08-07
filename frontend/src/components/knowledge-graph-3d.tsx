@@ -357,7 +357,7 @@ export function KnowledgeGraph3D({
               max-width: 280px;
               line-height: 1.4;
               ">
-              <div style="color: ${TYPE_COLORS[n.type] ?? "#fff"}; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-family: var(--font-albert-sans), monospace; margin-bottom: 3px;">${TYPE_LABEL[n.type] ?? n.type}</div>
+              <div style="color: ${TYPE_COLORS[n.type] ?? "#fff"}; font-size: 9px; text-transform:; letter-spacing: 1px; font-family: var(--font-albert-sans), monospace; margin-bottom: 3px;">${TYPE_LABEL[n.type] ?? n.type}</div>
               <div style="font-weight: 600; margin-bottom: ${n.description ? "3px" : "0"};">${n.label}</div>
               ${n.description ? `<div style="color: #9aa3b2; font-size: 11px;">${n.description}</div>` : ""}
             </div>`}
@@ -382,7 +382,7 @@ export function KnowledgeGraph3D({
                 .join("");
               const header =
                 rels.length > 1
-                  ? `<div style="font-size:9px; text-transform:uppercase; letter-spacing:1px; font-family: var(--font-albert-sans), monospace; color:#6b7280; margin-bottom:4px;">${rels.length} relationships</div>`
+                  ? `<div style="font-size:11px; font-family: var(--font-albert-sans), sans-serif; color:#6b7280; margin-bottom:4px;">${rels.length} relationships</div>`
                   : "";
               return `<div style="
                 background: rgba(15, 18, 28, 0.95);
@@ -502,7 +502,7 @@ export function KnowledgeGraph3D({
         {/* Top overlay — stats + controls */}
         <div className="absolute top-3 left-3 right-3 z-20 flex items-start justify-between gap-3 pointer-events-none">
           <div className="rounded-md border border-border bg-background/80 backdrop-blur-sm p-3 pointer-events-auto">
-            <div className="text-[10px] uppercase tracking-wider font-mono text-foreground-subtle mb-1.5">
+            <div className="text-[11px] text-foreground-subtle mb-1.5">
               {title ?? project?.name ?? "Brain"} · brain
             </div>
             <div className="flex items-baseline gap-3">
@@ -510,7 +510,7 @@ export function KnowledgeGraph3D({
                 <div className="text-2xl font-semibold font-mono leading-none text-foreground">
                   {graphData.nodes.length}
                 </div>
-                <div className="text-[10px] text-foreground-subtle uppercase tracking-wider">
+                <div className="text-[11px] text-foreground-subtle">
                   entities
                 </div>
               </div>
@@ -519,7 +519,7 @@ export function KnowledgeGraph3D({
                 <div className="text-2xl font-semibold font-mono leading-none text-foreground">
                   {graphData.links.length}
                 </div>
-                <div className="text-[10px] text-foreground-subtle uppercase tracking-wider">
+                <div className="text-[11px] text-foreground-subtle">
                   edges
                 </div>
               </div>
@@ -581,14 +581,14 @@ export function KnowledgeGraph3D({
         {/* Legend — clickable filters */}
         <div className="absolute bottom-3 left-3 z-20 rounded-md border border-border bg-background/80 backdrop-blur-sm p-3 pointer-events-auto">
           <div className="flex items-center justify-between gap-4 mb-2">
-            <div className="text-[10px] uppercase tracking-wider font-mono text-foreground-subtle">
+            <div className="text-[11px] text-foreground-subtle">
               Entity types
             </div>
             {hiddenTypes.size > 0 && (
               <button
                 type="button"
                 onClick={() => setHiddenTypes(new Set())}
-                className="text-[10px] uppercase tracking-wider font-mono text-accent hover:text-foreground transition-colors"
+                className="text-[11px] text-accent hover:text-foreground transition-colors"
               >
                 Show all
               </button>
@@ -712,7 +712,7 @@ export function KnowledgeGraph3D({
                 the count then. */}
             {selected && visible.id === selected.id && focus && (
               <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-foreground-subtle">
+                <span className="text-[11px] text-foreground-subtle">
                   Connections
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-mono text-foreground">
@@ -727,7 +727,7 @@ export function KnowledgeGraph3D({
                 </span>
               </div>
             )}
-            <div className="mt-3 pt-3 border-t border-border text-[10px] font-mono text-foreground-subtle uppercase tracking-wider">
+            <div className="mt-3 pt-3 border-t border-border text-[11px] text-foreground-subtle">
               {selected
                 ? "selected · click background to dismiss"
                 : "hover · click to lock"}
@@ -913,7 +913,7 @@ function EntitySearch({ nodes, onSelect, hiddenTypes }: EntitySearchProps) {
                             {highlightMatch(n.label, query)}
                           </span>
                           <span
-                            className="text-[10px] font-mono uppercase tracking-wider shrink-0"
+                            className="text-[11px] shrink-0"
                             style={{ color }}
                           >
                             {TYPE_LABEL[n.type] ?? n.type}

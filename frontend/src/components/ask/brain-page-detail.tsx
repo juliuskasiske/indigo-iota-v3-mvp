@@ -61,7 +61,7 @@ export function BrainPageDetail({ page }: { page: BrainPage }) {
         <h2 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
           {page.name}
         </h2>
-        <Badge variant="primary" className="mt-2.5 uppercase tracking-wide">
+        <Badge variant="primary" className="mt-2.5">
           {entityTypeLabel(page.entity_type)}
         </Badge>
       </div>
@@ -74,7 +74,7 @@ export function BrainPageDetail({ page }: { page: BrainPage }) {
 
       {fields.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+          <h3 className="mb-3 text-xs text-foreground-subtle">
             Frontmatter
           </h3>
           <dl className="grid grid-cols-[minmax(0,9rem)_1fr] gap-x-4 gap-y-2.5 text-sm">
@@ -90,7 +90,7 @@ export function BrainPageDetail({ page }: { page: BrainPage }) {
 
       {timeline.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+          <h3 className="mb-3 text-xs text-foreground-subtle">
             Timeline
           </h3>
           <ol className="relative space-y-5 border-l border-border pl-5">
@@ -109,7 +109,7 @@ export function BrainPageDetail({ page }: { page: BrainPage }) {
 
       {relationships.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-mono uppercase tracking-[0.18em] text-foreground-subtle">
+          <h3 className="mb-3 text-xs text-foreground-subtle">
             Relationships
           </h3>
           <ul className="space-y-1.5 text-sm">

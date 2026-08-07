@@ -350,7 +350,7 @@ export const OntologyPanel = forwardRef<
             {/* ---- Entities ---- */}
             <section className="space-y-3">
               <div>
-                <h3 className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+                <h3 className="text-xs text-accent">
                   Entities
                 </h3>
                 <p className="mt-1 text-xs text-foreground-muted">
@@ -511,7 +511,7 @@ export const OntologyPanel = forwardRef<
             {/* ---- Relationships ---- */}
             <section className="space-y-3">
               <div>
-                <h3 className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+                <h3 className="text-xs text-accent">
                   Relationships
                 </h3>
                 <p className="mt-1 text-xs text-foreground-muted">

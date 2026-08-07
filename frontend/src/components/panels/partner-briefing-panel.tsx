@@ -164,7 +164,7 @@ export function PartnerBriefingPanel({
         {/* Question input */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs uppercase tracking-wider text-foreground-subtle">
+            <span className="text-xs text-foreground-subtle">
               Your question
             </span>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
@@ -292,7 +292,7 @@ export function PartnerBriefingPanel({
       <div className="space-y-5">
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs uppercase tracking-wider text-foreground-subtle inline-flex items-center gap-1.5">
+            <span className="text-xs text-foreground-subtle inline-flex items-center gap-1.5">
               <History className="h-3 w-3" />
               Recent briefings
             </span>
@@ -315,7 +315,7 @@ export function PartnerBriefingPanel({
         </Card>
 
         <Card className="p-4">
-          <div className="text-xs uppercase tracking-wider text-foreground-subtle mb-2">
+          <div className="text-xs text-foreground-subtle mb-2">
             What partners ask
           </div>
           <ul className="space-y-2 text-xs text-foreground-muted leading-relaxed">

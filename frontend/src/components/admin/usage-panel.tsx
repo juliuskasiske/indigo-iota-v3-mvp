@@ -63,7 +63,7 @@ export function UsagePanel({
 
             <div className="border-t border-border/40 pt-4 space-y-3">
               <div className="space-y-1">
-                <p className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+                <p className="text-xs text-accent">
                   How email is sorted
                 </p>
                 <p className="text-xs leading-relaxed text-foreground-subtle">
@@ -113,7 +113,7 @@ function EmailProcessing({
   const pending = Math.max(0, inScope - processed);
   return (
     <div className="space-y-2.5 border-t border-border/40 pt-4">
-      <p className="text-xs font-mono uppercase tracking-[0.18em] text-accent">
+      <p className="text-xs text-accent">
         Email processing
       </p>
       <div className="flex items-end justify-between gap-3">

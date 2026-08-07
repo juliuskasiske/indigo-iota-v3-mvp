@@ -165,7 +165,7 @@ export function SpendByUserPanel({
             <UsageChart data={chart} metric={metric} />
 
             <div className="mt-6 pt-1.5">
-              <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-wide text-foreground-subtle">
+              <div className="mb-3.5 text-[11px] font-semibold text-foreground-subtle">
                 By team member · {range}
               </div>
               <div className="overflow-x-auto">

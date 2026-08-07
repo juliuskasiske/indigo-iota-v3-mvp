@@ -195,7 +195,7 @@ export function InitializeProjectFlow() {
         </Link>
       </div>
 
-      <div className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-accent">
+      <div className="mb-2 text-xs text-accent">
         Initialize Project
       </div>
       <h1 className="text-3xl font-semibold tracking-tight mb-2">
@@ -527,7 +527,7 @@ function StepTeam({
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs uppercase tracking-wider text-foreground-subtle">
+        <div className="text-xs text-foreground-subtle">
           Suggested from your firm
         </div>
         <div className="flex flex-wrap gap-2">
@@ -547,7 +547,7 @@ function StepTeam({
 
       {form.consultants.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wider text-foreground-subtle">
+          <div className="text-xs text-foreground-subtle">
             Synced consultants ({form.consultants.length})
           </div>
           <div className="flex flex-wrap gap-2">
@@ -832,7 +832,7 @@ function StepWorkstreams({
             className="rounded-md border border-border bg-background-soft/30 p-4 space-y-3"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground-subtle font-mono">
+              <span className="inline-flex items-center gap-2 text-xs text-foreground-subtle">
                 <Layers className="h-3 w-3" />
                 Workstream {i + 1}
               </span>
@@ -1079,7 +1079,7 @@ function StepReview({
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-border/50 last:border-0">
-      <div className="text-xs uppercase tracking-wider text-foreground-subtle pt-0.5">
+      <div className="text-xs text-foreground-subtle pt-0.5">
         {label}
       </div>
       <div className="text-sm text-foreground whitespace-pre-wrap break-words">
@@ -1272,7 +1272,7 @@ function WiringAnimation({
 
   return (
     <div className="fade-in-up">
-      <div className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-accent">
+      <div className="mb-2 text-xs text-accent">
         Initializing
       </div>
       <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-1">
@@ -1288,7 +1288,7 @@ function WiringAnimation({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-5">
         <Card className="p-6">
-          <div className="text-xs uppercase tracking-wider text-foreground-subtle mb-4">
+          <div className="text-xs text-foreground-subtle mb-4">
             Pipeline
           </div>
           <ul className="space-y-3">
@@ -1345,7 +1345,7 @@ function WiringAnimation({
 
         <Card className="p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs uppercase tracking-wider text-foreground-subtle">
+            <div className="text-xs text-foreground-subtle">
               Entities detected
             </div>
             <Badge variant="accent" className="font-mono">
@@ -1374,7 +1374,7 @@ function WiringAnimation({
                     </span>
                     <span
                       className={cn(
-                        "text-[10px] font-mono uppercase tracking-wider",
+                        "text-[11px]",
                         entityColor[e.type]
                       )}
                     >

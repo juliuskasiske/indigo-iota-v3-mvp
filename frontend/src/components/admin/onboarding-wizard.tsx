@@ -268,7 +268,7 @@ export function OnboardingWizard({
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/70 px-5 backdrop-blur-md md:px-8">
         <div className="flex items-center gap-3">
           <IotaLogo size={20} />
-          <span className="hidden items-center gap-1.5 text-xs font-mono uppercase tracking-[0.18em] text-accent sm:flex">
+          <span className="hidden items-center gap-1.5 text-xs text-accent sm:flex">
             Onboarding
           </span>
         </div>
@@ -347,7 +347,7 @@ export function OnboardingWizard({
 
         {/* Step header */}
         <div>
-          <p className="mb-2 text-xs font-mono uppercase tracking-[0.2em] text-accent">
+          <p className="mb-2 text-xs text-accent">
             Step {stepIdx + 1} of {STEPS.length}
           </p>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">

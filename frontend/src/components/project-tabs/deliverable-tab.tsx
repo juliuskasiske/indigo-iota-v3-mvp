@@ -318,7 +318,7 @@ function DeliverableGantt({
               click a bar to view &amp; edit
             </p>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-wider text-foreground-subtle">
+          <div className="flex items-center gap-3 text-[11px] text-foreground-subtle">
             <LegendDot color="bg-accent" label="On track" />
             <LegendDot color="bg-warning" label="At risk" />
             <LegendDot color="bg-destructive" label="Overdue" />
@@ -336,7 +336,7 @@ function DeliverableGantt({
                 height: 28,
               }}
             >
-              <div className="text-[10px] uppercase tracking-wider text-foreground-subtle">
+              <div className="text-[11px] text-foreground-subtle">
                 Deliverable
               </div>
               <div className="relative h-full">
@@ -367,7 +367,7 @@ function DeliverableGantt({
                     left: `calc(${LABEL_W}px + ${pct(today)}% * (100% - ${LABEL_W}px) / 100%)`,
                   }}
                 >
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-mono text-accent uppercase tracking-wider whitespace-nowrap">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] text-accent whitespace-nowrap">
                     Today
                   </span>
                   <span className="absolute inset-y-0 left-0 w-px bg-accent/60" />
@@ -653,7 +653,7 @@ function DeliverableCallout({
       {/* Scope */}
       <div className="rounded-md border border-border bg-background-soft/40 p-3">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] uppercase tracking-wider text-foreground-subtle font-mono inline-flex items-center gap-1.5">
+          <div className="text-[11px] text-foreground-subtle inline-flex items-center gap-1.5">
             <FileText className="h-3 w-3" />
             Scope
             {isEdited && <span className="text-accent">· edited</span>}
@@ -665,7 +665,7 @@ function DeliverableCallout({
                 setDescDraft(d.description);
                 setEditingDesc(true);
               }}
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-foreground-subtle hover:text-foreground transition-colors font-mono"
+              className="inline-flex items-center gap-1 text-[11px] text-foreground-subtle hover:text-foreground transition-colors"
             >
               <Edit2 className="h-3 w-3" />
               Edit
@@ -811,7 +811,7 @@ function ExpandableDeliverableRow({
       {isExpanded && (
         <div className="border-t border-border bg-background/40 p-3 fade-in-up">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] uppercase tracking-wider text-foreground-subtle font-mono inline-flex items-center gap-1.5">
+            <div className="text-[11px] text-foreground-subtle inline-flex items-center gap-1.5">
               <FileText className="h-3 w-3" />
               Scope
               {isEdited && <span className="text-accent">· edited</span>}
@@ -823,7 +823,7 @@ function ExpandableDeliverableRow({
                   setDescDraft(d.description);
                   setEditingDesc(true);
                 }}
-                className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-foreground-subtle hover:text-foreground transition-colors font-mono"
+                className="inline-flex items-center gap-1 text-[11px] text-foreground-subtle hover:text-foreground transition-colors"
               >
                 <Edit2 className="h-3 w-3" />
                 Edit
