@@ -977,6 +977,32 @@ export interface InitiativeCard {
   feasible_by_end: boolean | null;
 }
 
+/** One act of human steering on a node: a rejection with its reason, or a
+ *  note that sent the agents back to redo that part of the tree. */
+export interface NodeIntervention {
+  id: number;
+  kind: "discard" | "feedback";
+  comment: string;
+  actor: string;
+  status: "pending" | "applied" | "failed";
+  error: string;
+  replacement_node_id: number | null;
+  created_at: number;
+}
+
+/** A row of the run's review log. `node_id` is null once the node it was about
+ *  has been rebuilt away; `node_label` keeps the record readable. */
+export interface ReviewHistoryEntry {
+  id: number;
+  node_id: number | null;
+  node_label: string;
+  node_kind: string;
+  kind: "discard" | "feedback";
+  comment: string;
+  status: "pending" | "applied" | "failed";
+  created_at: number;
+}
+
 export interface TreeNode {
   id: number;
   parent_id: number | null;
@@ -988,8 +1014,11 @@ export interface TreeNode {
   mece_note: string;
   status: NodeStatus;
   sort_order: number;
+  /** Why a reviewer rejected this node, when they did. */
+  discard_reason: string;
   evidence: TreeEvidence[];
   card: InitiativeCard | null;
+  interventions: NodeIntervention[];
 }
 
 /** The objective as it stood when the run started — frozen, so editing the
@@ -1021,6 +1050,12 @@ export interface SwarmTree {
   status?: string | null;
   objective: TreeObjective | null;
   coverage: TreeCoverage | null;
+  /** Agents are redoing part of the tree. Not a full pass, so `running` stays
+   *  false — but the UI should keep polling fast until it reaches zero. */
+  pending_interventions: number;
+  /** Every discard and every note on this run, in order — including ones whose
+   *  node has since been rebuilt away. */
+  review_history: ReviewHistoryEntry[];
   nodes: TreeNode[];
 }
 
@@ -1088,6 +1123,16 @@ export const api = {
   swarmLog: (since = 0) => request<SwarmLog>(`/api/swarm/log?since=${since}`),
   swarmTree: () => request<SwarmTree>("/api/swarm/tree"),
   swarmStart: () => request<SwarmStatus>("/api/swarm/start", { method: "POST" }),
+  discardNode: (nodeId: number, comment: string) =>
+    request<{ ok: boolean; intervention_id: number }>(
+      `/api/swarm/nodes/${nodeId}/discard`,
+      { method: "POST", body: JSON.stringify({ comment }) },
+    ),
+  feedbackNode: (nodeId: number, comment: string) =>
+    request<{ ok: boolean; intervention_id: number }>(
+      `/api/swarm/nodes/${nodeId}/feedback`,
+      { method: "POST", body: JSON.stringify({ comment }) },
+    ),
   swarmStop: () => request<SwarmStatus>("/api/swarm/stop", { method: "POST" }),
 
   objective: () => request<Objective>("/api/objective"),

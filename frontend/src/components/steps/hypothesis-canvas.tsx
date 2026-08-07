@@ -11,6 +11,8 @@ import {
   Target,
   CheckCircle2,
   AlertCircle,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 import type { TreeNode, TreeObjective } from "@/lib/api";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -123,6 +125,9 @@ function NodeBox({
             : "border-border bg-background-soft",
         selected && "ring-2 ring-accent ring-offset-2 ring-offset-background",
         lit && !selected && n.kind !== "objective" && "border-accent",
+        // A rejected node stays on the board — the reasoning is part of the
+        // record — but must never be mistaken for live work.
+        n.status === "discarded" && "opacity-50 line-through decoration-foreground-subtle",
         dim && "opacity-35 saturate-50",
       )}
     >
@@ -185,8 +190,148 @@ function NodeBox({
   );
 }
 
+/** Discard or steer a node. Both send the agents back to redo this part of the
+ *  tree, so both demand a sentence: an unexplained rejection tells them nothing. */
+function ReviewActions({
+  node,
+  onSubmit,
+}: {
+  node: TreeNode;
+  onSubmit: (kind: "discard" | "feedback", comment: string) => Promise<void>;
+}) {
+  const [mode, setMode] = useState<"discard" | "feedback" | null>(null);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const pending = node.interventions.some((i) => i.status === "pending");
+  const isRoot = node.kind === "objective";
+  const gone = node.status === "discarded";
+
+  if (gone) {
+    return (
+      <div className="rounded-lg border border-border bg-background/60 px-3 py-2.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground-subtle">
+          Discarded
+        </p>
+        {node.discard_reason && (
+          <p className="mt-1 text-sm leading-relaxed text-foreground-muted">
+            {node.discard_reason}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (pending) {
+    return (
+      <p className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm text-accent">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        The agents are redoing this part of the tree.
+      </p>
+    );
+  }
+
+  const submit = async () => {
+    if (!mode || !comment.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit(mode, comment.trim());
+      setMode(null);
+      setComment("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That didn't go through.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {mode === null ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("feedback")}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Give feedback
+          </button>
+          {!isRoot && (
+            <button
+              type="button"
+              onClick={() => setMode("discard")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground-muted transition-colors hover:border-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Discard
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <p className="text-[11px] text-foreground-subtle">
+            {mode === "discard"
+              ? node.kind === "initiative"
+                ? "This initiative is dropped and replaced. Say why, so the replacement doesn't repeat it."
+                : "This branch and everything under it are dropped and replaced. Say why, so the replacement doesn't repeat it."
+              : "This node and everything under it are rebuilt with your note in hand."}
+          </p>
+          <textarea
+            autoFocus
+            rows={3}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={
+              mode === "discard"
+                ? "e.g. We tried this last year and it didn't stick — the constraint is capacity, not the target."
+                : "e.g. Size this against the top 50 SKUs only, and assume we can't touch list price."
+            }
+            className="w-full resize-y rounded-lg border border-border bg-input p-2.5 text-sm text-foreground placeholder:text-foreground-subtle focus:border-accent focus:outline-none"
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!comment.trim() || busy}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-accent-foreground disabled:opacity-50",
+                mode === "discard" ? "bg-destructive" : "bg-accent",
+              )}
+            >
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {mode === "discard" ? "Discard and replace" : "Send feedback"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode(null);
+                setError(null);
+              }}
+              className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground-muted"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** The detail panel: branch reasoning, or the full initiative card. */
-function NodeDetail({ node, objective }: { node: TreeNode; objective: TreeObjective | null }) {
+function NodeDetail({
+  node,
+  objective,
+  onSubmit,
+}: {
+  node: TreeNode;
+  objective: TreeObjective | null;
+  onSubmit: (kind: "discard" | "feedback", comment: string) => Promise<void>;
+}) {
   const card = node.card;
   const color = statusColor(node.status);
 
@@ -333,6 +478,46 @@ function NodeDetail({ node, objective }: { node: TreeNode; objective: TreeObject
           The agents are still working on this one.
         </p>
       )}
+
+      {/* What a reviewer already said about this node, oldest first, so the
+          current wording can be read against what caused it. */}
+      {node.interventions.length > 0 && (
+        <Section title="Review history">
+          <ol className="space-y-2">
+            {node.interventions.map((iv) => (
+              <li
+                key={iv.id}
+                className="rounded-lg border border-border bg-background/60 px-3 py-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold uppercase tracking-wider",
+                      iv.kind === "discard" ? "text-destructive" : "text-accent",
+                    )}
+                  >
+                    {iv.kind === "discard" ? "Discarded" : "Feedback"}
+                  </span>
+                  <span className="text-[11px] text-foreground-subtle">
+                    {iv.status === "pending"
+                      ? "redoing…"
+                      : iv.status === "failed"
+                        ? `failed, ${iv.error}`
+                        : "applied"}
+                  </span>
+                </div>
+                <p className="mt-1 text-[13px] leading-snug text-foreground-muted">
+                  {iv.comment}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
+
+      <Section title="Review this node">
+        <ReviewActions node={node} onSubmit={onSubmit} />
+      </Section>
     </div>
   );
 }
@@ -352,10 +537,13 @@ export function HypothesisCanvas({
   nodes,
   objective,
   runKey,
+  onReview,
 }: {
   nodes: TreeNode[];
   objective: TreeObjective | null;
   runKey: string;
+  /** Discard or steer a node; resolves once the agents have been asked. */
+  onReview: (nodeId: number, kind: "discard" | "feedback", comment: string) => Promise<void>;
 }) {
   const layout = useMemo(() => layoutTree(nodes), [nodes]);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -479,6 +667,15 @@ export function HypothesisCanvas({
       return { k: k2, x: cx - (cx - v.x) * (k2 / v.k), y: cy - (cy - v.y) * (k2 / v.k) };
     });
   };
+
+  // The drawer holds a snapshot from when the box was clicked, but polling
+  // replaces the node array every couple of seconds while a regeneration runs.
+  // Re-read the open node from the latest data so the panel shows the discard
+  // landing and the replacement arriving, instead of freezing on a stale copy.
+  const liveActive = useMemo(
+    () => (active ? nodes.find((n) => n.id === active.id) : undefined),
+    [active, nodes],
+  );
 
   // The lit set is the hovered (or selected) node plus its whole chain back to
   // the objective — the chain of thought that produced it.
@@ -630,7 +827,11 @@ export function HypothesisCanvas({
               <SheetDescription className="sr-only">
                 Detail for this {active.node.kind}
               </SheetDescription>
-              <NodeDetail node={active.node} objective={objective} />
+              <NodeDetail
+                node={liveActive ?? active.node}
+                objective={objective}
+                onSubmit={(kind, comment) => onReview(active.id, kind, comment)}
+              />
             </>
           )}
         </SheetContent>

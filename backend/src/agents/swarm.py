@@ -201,6 +201,46 @@ P_SIZE = (
     'arithmetic you used>","confidence":"low|medium|high","feasible_by_end":true|false}.'
 )
 
+# The header that carries a human's words into any prompt. Named so the agent
+# knows this outranks its own prior reasoning: the reviewer has seen the tree.
+_REVIEWER = (
+    "REVIEWER INSTRUCTION (a human partner reviewed this part of the tree and "
+    "said the following — treat it as binding, above your own earlier reasoning):"
+)
+
+P_REPLACE_BRANCH = (
+    "You are the MECE Decomposition agent. A human reviewer REJECTED one branch of "
+    "the tree and told you why. Propose ONE replacement branch in its place. "
+    "The replacement must: address the reviewer's objection; not restate the "
+    "rejected branch under a new name; not overlap the surviving sibling branches "
+    "you are shown; and still belong under the same parent. "
+    "Carry a rationale of one or two sentences saying why this cut is the right one "
+    'given what the reviewer said. Set "terminal": true when it is already concrete '
+    "enough that the next step is naming initiatives rather than cutting further. "
+    'Return STRICT JSON only: {"label":"<3 to 8 words>","rationale":"<why this cut, '
+    'answering the reviewer>","terminal":true|false}.'
+)
+
+P_REPLACE_INITIATIVE = (
+    "You are the Initiative Design agent. A human reviewer REJECTED one initiative "
+    "and told you why. Propose ONE replacement under the same branch. It must "
+    "address the objection, must not be the rejected initiative reworded, and must "
+    "not duplicate the surviving initiatives you are shown. An initiative is a piece "
+    "of work a team could start on Monday, not a theme. "
+    'Return STRICT JSON only: {"name":"<5 to 10 words>","context":"<2 to 3 sentences: '
+    'what is meant by this, and what is in and out of scope>"}.'
+)
+
+P_REVISE = (
+    "You are revising one node of a hypothesis tree because a human reviewer gave "
+    "feedback on it. Rewrite the node's label and rationale so they reflect what the "
+    "reviewer asked for. Keep what they did not object to — this is a revision, not a "
+    "fresh start — and keep the label short. If the feedback does not warrant changing "
+    "the wording at all, return the existing label and rationale unchanged. "
+    'Return STRICT JSON only: {"label":"<short label>","rationale":"<one or two '
+    'sentences>"}.'
+)
+
 P_JUDGE = (
     "You are the Judge agent. You sense-check every other agent before its output "
     "reaches the client. Given the initiative, the Validator's finding, the Planner's "
@@ -401,14 +441,15 @@ def _frame(brief: str, org_id: int | None, budget: _Budget) -> str:
     return ""
 
 
-def _decompose(brief, headline, path, node, evidence, org_id, budget) -> dict:
+def _decompose(brief, headline, path, node, evidence, org_id, budget, steer="") -> dict:
     user = (
         f"PROGRAM\n{brief}\n\n"
         f"OBJECTIVE (the root of the tree)\n{headline}\n\n"
         f"PATH FROM THE ROOT TO THIS NODE\n{path}\n\n"
         f"THE NODE TO CUT\n{node}\n\n"
         f"EVIDENCE\n{_evidence_block(evidence)}\n\n"
-        "Cut the node above into MECE branches."
+        + (f"{_REVIEWER}\n{steer}\n\n" if steer else "")
+        + "Cut the node above into MECE branches."
     )
     data = _ask(P_DECOMPOSE, user, role="decomposition", org_id=org_id, budget=budget,
                 max_tokens=900)
@@ -431,12 +472,13 @@ def _decompose(brief, headline, path, node, evidence, org_id, budget) -> dict:
     return {"mece_note": mece_note, "branches": branches[:MAX_BRANCHES_PER_NODE]}
 
 
-def _initiatives(brief, branch, evidence, org_id, budget) -> list[dict]:
+def _initiatives(brief, branch, evidence, org_id, budget, steer="") -> list[dict]:
     user = (
         f"PROGRAM\n{brief}\n\n"
         f"BRANCH\n{branch}\n\n"
         f"EVIDENCE\n{_evidence_block(evidence)}\n\n"
-        "Propose the concrete initiatives for this branch."
+        + (f"{_REVIEWER}\n{steer}\n\n" if steer else "")
+        + "Propose the concrete initiatives for this branch."
     )
     data = _ask(P_INITIATIVE, user, role="initiative", org_id=org_id, budget=budget,
                 max_tokens=700)
@@ -589,6 +631,146 @@ def _fallback_branches(obj) -> list[dict]:
     ]
 
 
+# --- shared builders --------------------------------------------------------
+# The main pass and the human-steered regeneration build the same things, so
+# they share these. A replacement initiative that skipped the Judge, or a
+# rebuilt branch whose children never got sized, would look identical to a real
+# one on the canvas while being worth nothing.
+
+async def _build_initiative(
+    db_name, run_id, org_id, budget, emit, call, *,
+    brief, obj, parent_id: int, init: dict, sort_order: int,
+) -> int:
+    """Take a proposed initiative through validate → plan → size → judge, persist it."""
+    await emit("initiative", "log", f"Initiative: {init['name']}")
+
+    # Retrieve for the initiative itself, not its branch.
+    iev = await call(_retrieve, db_name, f"{init['name']}. {init['context']}", 6)
+    validation = await call(_validate, init, iev, org_id, budget)
+    plan = await call(_plan, brief, init, validation, org_id, budget)
+    sizing = await call(_size, brief, obj, init, validation, plan, org_id, budget)
+    verdict = await call(_judge, brief, init, validation, plan, sizing, org_id, budget)
+
+    facts = validation.get("facts") or []
+    status = verdict["verdict"]
+    if not facts:
+        # Nothing grounded it — it cannot be 'supported' whatever the Judge said.
+        status = tree.STATUS_NEEDS_EVIDENCE
+
+    with get_tenant_connection(db_name) as conn:
+        node_id = tree.add_node(
+            conn, run_id=run_id, parent_id=parent_id, kind=tree.KIND_INITIATIVE,
+            label=init["name"], status=status, sort_order=sort_order,
+        )
+        tree.add_evidence(
+            conn, node_id,
+            [tree.Evidence(text=f["text"], source=f["source"], page_path=f["page_path"])
+             for f in facts]
+            or [tree.Evidence(text=e["text"], source=e["source"], page_path=e["page_path"])
+                for e in iev[:2]],
+        )
+        # Both the Sizer and the Judge express a confidence. The Judge's is the
+        # one that ships: it covers the whole card, not just the arithmetic.
+        card_fields = {k: v for k, v in sizing.items() if v is not None}
+        card_fields.update(
+            context=init["context"],
+            sizing_approach=plan.get("sizing_approach"),
+            what_must_be_true=plan.get("what_must_be_true"),
+            next_steps=plan.get("next_steps"),
+        )
+        if verdict.get("confidence"):
+            card_fields["confidence"] = verdict["confidence"]
+        tree.upsert_card(conn, node_id, **card_fields)
+
+    for f in facts:
+        await emit("validator", "fact", f"Evidence: {f['text']}", node_id=node_id)
+    if sizing.get("value_amount"):
+        await emit("sizer", "log",
+                   f"Sized at {sizing['value_amount']:,.0f} "
+                   f"{sizing.get('value_currency')} — {sizing.get('value_basis')}",
+                   node_id=node_id)
+    await emit("judge", "node",
+               f"Judge: {status.replace('_', ' ')}" +
+               (f" — {verdict['note']}" if verdict.get("note") else ""),
+               node_id=node_id, status=status)
+    return node_id
+
+
+async def _build_subtree(
+    db_name, run_id, org_id, budget, emit, call, *,
+    brief, obj, headline, node_id: int, label: str, path: str, depth: int,
+    steer: str = "",
+) -> None:
+    """Fill in everything BELOW an existing branch: sub-branches, then initiatives.
+
+    ``steer`` carries the reviewer's words down the whole subtree, so feedback on
+    a branch reaches the initiatives underneath it rather than stopping at the
+    box they clicked.
+    """
+    frontier = [{"id": node_id, "label": label, "depth": depth, "path": path}]
+    leaves: list[dict] = []
+    branch_count = 0
+
+    while frontier:
+        node = frontier.pop(0)
+        if node["depth"] >= MAX_BRANCH_DEPTH or branch_count >= MAX_BRANCH_NODES:
+            leaves.append(node)
+            continue
+
+        evidence = await call(_retrieve, db_name, f"{node['label']} {obj.metric_label}", 8)
+        result = await call(_decompose, brief, headline, node["path"], node["label"],
+                            evidence, org_id, budget, steer)
+        branches = result["branches"]
+        if not branches:
+            leaves.append(node)
+            continue
+
+        if result["mece_note"]:
+            with get_tenant_connection(db_name) as conn:
+                tree.set_mece_note(conn, node["id"], result["mece_note"])
+
+        for order, b in enumerate(branches):
+            if branch_count >= MAX_BRANCH_NODES:
+                break
+            with get_tenant_connection(db_name) as conn:
+                child_id = tree.add_node(
+                    conn, run_id=run_id, parent_id=node["id"], kind=tree.KIND_BRANCH,
+                    label=b["label"], rationale=b["rationale"], sort_order=order,
+                )
+                picked = b["evidence"] or evidence[:2]
+                tree.add_evidence(
+                    conn, child_id,
+                    [tree.Evidence(text=e["text"], source=e["source"],
+                                   page_path=e["page_path"]) for e in picked],
+                )
+            branch_count += 1
+            await emit("decomposition", "node",
+                       f"Branch: {b['label']} — {b['rationale']}", node_id=child_id)
+
+            child = {"id": child_id, "label": b["label"], "depth": node["depth"] + 1,
+                     "path": f"{node['path']} → {b['label']}"}
+            if b["terminal"] or child["depth"] >= MAX_BRANCH_DEPTH:
+                leaves.append(child)
+            else:
+                frontier.append(child)
+
+    made = 0
+    for leaf in leaves[:MAX_LEAF_BRANCHES]:
+        if made >= MAX_INITIATIVES:
+            break
+        evidence = await call(_retrieve, db_name, leaf["label"], 8)
+        proposed = await call(_initiatives, brief, leaf["label"], evidence, org_id,
+                              budget, steer)
+        for order, init in enumerate(proposed):
+            if made >= MAX_INITIATIVES:
+                break
+            await _build_initiative(
+                db_name, run_id, org_id, budget, emit, call,
+                brief=brief, obj=obj, parent_id=leaf["id"], init=init, sort_order=order,
+            )
+            made += 1
+
+
 # --- the loop ---------------------------------------------------------------
 
 async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None:
@@ -709,61 +891,12 @@ async def _loop(db_name: str, run_id: int, org: str, org_id: int | None) -> None
             for order, init in enumerate(proposed):
                 if initiative_count >= MAX_INITIATIVES:
                     break
-                await emit("initiative", "log", f"Initiative: {init['name']}")
-
-                # Retrieve for the initiative itself, not its branch.
-                iev = await call(_retrieve, db_name, f"{init['name']}. {init['context']}", 6)
-                validation = await call(_validate, init, iev, org_id, budget)
-                plan = await call(_plan, brief, init, validation, org_id, budget)
-                sizing = await call(_size, brief, obj, init, validation, plan, org_id, budget)
-                verdict = await call(_judge, brief, init, validation, plan, sizing, org_id, budget)
-
-                facts = validation.get("facts") or []
-                status = verdict["verdict"]
-                if not facts:
-                    # Nothing grounded it — it cannot be 'supported' whatever the
-                    # Judge said.
-                    status = tree.STATUS_NEEDS_EVIDENCE
-
-                with get_tenant_connection(db_name) as conn:
-                    node_id = tree.add_node(
-                        conn, run_id=run_id, parent_id=leaf["id"],
-                        kind=tree.KIND_INITIATIVE, label=init["name"],
-                        status=status, sort_order=order,
-                    )
-                    tree.add_evidence(
-                        conn, node_id,
-                        [tree.Evidence(text=f["text"], source=f["source"],
-                                       page_path=f["page_path"]) for f in facts]
-                        or [tree.Evidence(text=e["text"], source=e["source"],
-                                          page_path=e["page_path"]) for e in iev[:2]],
-                    )
-                    # Both the Sizer and the Judge express a confidence. The
-                    # Judge's is the one that ships: it covers the whole card,
-                    # not just whether the arithmetic held up.
-                    card_fields = {k: v for k, v in sizing.items() if v is not None}
-                    card_fields.update(
-                        context=init["context"],
-                        sizing_approach=plan.get("sizing_approach"),
-                        what_must_be_true=plan.get("what_must_be_true"),
-                        next_steps=plan.get("next_steps"),
-                    )
-                    if verdict.get("confidence"):
-                        card_fields["confidence"] = verdict["confidence"]
-                    tree.upsert_card(conn, node_id, **card_fields)
+                await _build_initiative(
+                    db_name, run_id, org_id, budget, emit, call,
+                    brief=brief, obj=obj, parent_id=leaf["id"], init=init,
+                    sort_order=order,
+                )
                 initiative_count += 1
-
-                for f in facts:
-                    await emit("validator", "fact", f"Evidence: {f['text']}", node_id=node_id)
-                if sizing.get("value_amount"):
-                    await emit("sizer", "log",
-                               f"Sized at {sizing['value_amount']:,.0f} "
-                               f"{sizing.get('value_currency')} — {sizing.get('value_basis')}",
-                               node_id=node_id)
-                await emit("judge", "node",
-                           f"Judge: {status.replace('_', ' ')}" +
-                           (f" — {verdict['note']}" if verdict.get("note") else ""),
-                           node_id=node_id, status=status)
 
         # 5. roll branch status up from the initiatives beneath it.
         await call(_roll_up, db_name, run_id)
@@ -853,6 +986,231 @@ def _roll_up(db_name: str, run_id: int) -> None:
             status = resolve(n)
             if status != n["status"]:
                 tree.set_status(conn, n["id"], status)
+
+
+# --- human steering ---------------------------------------------------------
+# Two things a reviewer can do to a node, both of which send the agents back to
+# that part of the tree. Each runs as its own small task with its own budget:
+# they are targeted, so they must not be able to cost what a full pass costs.
+
+MAX_INTERVENTION_CALLS = 25
+
+# node_id -> asyncio.Task, so a second click on the same node while the first is
+# still working is refused rather than racing it.
+_interventions: dict[int, asyncio.Task] = {}
+
+
+def _replacement_for(kind: str, brief, obj, headline, parent, node, sibs, comment,
+                     evidence, org_id, budget) -> dict | None:
+    """Ask for ONE replacement for a rejected node, given why it was rejected."""
+    sib_text = "\n".join(f"- {s['label']}: {s['rationale'][:160]}" for s in sibs) or "(none)"
+    user = (
+        f"PROGRAM\n{brief}\n\n"
+        f"OBJECTIVE\n{headline}\n\n"
+        f"PARENT NODE\n{parent}\n\n"
+        f"THE REJECTED {'BRANCH' if kind == tree.KIND_BRANCH else 'INITIATIVE'}\n"
+        f"{node}\n\n"
+        f"{_REVIEWER}\n{comment}\n\n"
+        f"SURVIVING SIBLINGS (do not overlap these)\n{sib_text}\n\n"
+        f"EVIDENCE\n{_evidence_block(evidence)}\n\n"
+        "Propose the single replacement."
+    )
+    prompt = P_REPLACE_BRANCH if kind == tree.KIND_BRANCH else P_REPLACE_INITIATIVE
+    role = "decomposition" if kind == tree.KIND_BRANCH else "initiative"
+    data = _ask(prompt, user, role=role, org_id=org_id, budget=budget, max_tokens=600)
+    if not isinstance(data, dict):
+        return None
+    if kind == tree.KIND_BRANCH:
+        label = _str(data.get("label"), 120)
+        return {"label": label, "rationale": _str(data.get("rationale"), 500),
+                "terminal": bool(data.get("terminal"))} if label else None
+    name = _str(data.get("name"), 160)
+    return {"name": name, "context": _str(data.get("context"), 700)} if name else None
+
+
+def _revise(brief, node, comment, org_id, budget) -> dict | None:
+    user = (
+        f"PROGRAM\n{brief}\n\n"
+        f"THE NODE\nlabel: {node['label']}\nrationale: {node['rationale']}\n\n"
+        f"{_REVIEWER}\n{comment}\n\n"
+        "Rewrite the label and rationale."
+    )
+    data = _ask(P_REVISE, user, role="decomposition", org_id=org_id, budget=budget,
+                max_tokens=500)
+    if not isinstance(data, dict):
+        return None
+    label = _str(data.get("label"), 160)
+    return {"label": label or node["label"],
+            "rationale": _str(data.get("rationale"), 500) or node["rationale"]}
+
+
+async def _run_intervention(
+    db_name: str, org_id: int | None, node_id: int, kind: str, comment: str,
+    intervention_id: int, run_id: int,
+) -> None:
+    """Redo one part of the tree because a human said to."""
+    budget = _Budget(limit=MAX_INTERVENTION_CALLS)
+
+    async def emit(*a, **k):
+        await asyncio.get_running_loop().run_in_executor(
+            None, partial(_emit, db_name, run_id, *a, **k)
+        )
+
+    async def call(fn, *a, **kw):
+        return await asyncio.get_running_loop().run_in_executor(None, partial(fn, *a, **kw))
+
+    replacement_id: int | None = None
+    try:
+        with get_tenant_connection(db_name) as conn:
+            obj = objective_repo.get_objective(conn)
+            node = tree.get_node(conn, node_id)
+            parent = tree.get_node(conn, node["parent_id"]) if node["parent_id"] else None
+            sibs = tree.siblings(conn, node_id)
+        brief = objective_repo.describe(obj)
+        headline = obj.headline or objective_repo.readback(obj)
+        parent_label = parent["label"] if parent else headline
+
+        if kind == tree.KIND_DISCARD:
+            with get_tenant_connection(db_name) as conn:
+                dropped = tree.discard_subtree(conn, node_id, comment)
+            await emit("system", "log",
+                       f"Discarded “{node['label']}” and {len(dropped) - 1} node(s) beneath it: "
+                       f"{comment}", node_id=node_id)
+
+            evidence = await call(_retrieve, db_name, f"{parent_label} {obj.metric_label}", 8)
+            proposed = await call(_replacement_for, node["kind"], brief, obj, headline,
+                                  parent_label, node["label"], sibs, comment, evidence,
+                                  org_id, budget)
+            if not proposed:
+                raise RuntimeError("no replacement could be generated")
+
+            with get_tenant_connection(db_name) as conn:
+                order = tree.next_sort_order(conn, node["parent_id"])
+
+            if node["kind"] == tree.KIND_BRANCH:
+                with get_tenant_connection(db_name) as conn:
+                    replacement_id = tree.add_node(
+                        conn, run_id=run_id, parent_id=node["parent_id"],
+                        kind=tree.KIND_BRANCH, label=proposed["label"],
+                        rationale=proposed["rationale"], sort_order=order,
+                    )
+                    tree.add_evidence(
+                        conn, replacement_id,
+                        [tree.Evidence(text=e["text"], source=e["source"],
+                                       page_path=e["page_path"]) for e in evidence[:2]],
+                    )
+                await emit("decomposition", "node",
+                           f"Replacement branch: {proposed['label']} — {proposed['rationale']}",
+                           node_id=replacement_id)
+                # A replacement branch is worthless without the work under it.
+                await _build_subtree(
+                    db_name, run_id, org_id, budget, emit, call,
+                    brief=brief, obj=obj, headline=headline, node_id=replacement_id,
+                    label=proposed["label"], path=f"{parent_label} → {proposed['label']}",
+                    depth=1 if parent else 0,
+                    steer=f"A previous attempt was rejected: {comment}",
+                )
+            else:
+                replacement_id = await _build_initiative(
+                    db_name, run_id, org_id, budget, emit, call,
+                    brief=brief, obj=obj, parent_id=node["parent_id"],
+                    init=proposed, sort_order=order,
+                )
+
+        else:  # feedback
+            await emit("system", "log",
+                       f"Feedback on “{node['label']}”: {comment}", node_id=node_id)
+            revised = await call(_revise, brief, node, comment, org_id, budget)
+            if revised and node["kind"] != tree.KIND_OBJECTIVE:
+                with get_tenant_connection(db_name) as conn:
+                    tree.update_node(conn, node_id, label=revised["label"],
+                                     rationale=revised["rationale"])
+            label = (revised or node)["label"] if node["kind"] != tree.KIND_OBJECTIVE else node["label"]
+
+            if node["kind"] == tree.KIND_INITIATIVE:
+                # A leaf has no subtree — rebuild its card in place, under the
+                # same parent, then drop the stale one.
+                with get_tenant_connection(db_name) as conn:
+                    order = tree.next_sort_order(conn, node["parent_id"])
+                replacement_id = await _build_initiative(
+                    db_name, run_id, org_id, budget, emit, call,
+                    brief=brief, obj=obj, parent_id=node["parent_id"],
+                    init={"name": label,
+                          "context": f"{(node.get('rationale') or '')} {comment}".strip()},
+                    sort_order=order,
+                )
+                with get_tenant_connection(db_name) as conn:
+                    tree.delete_children(conn, node_id)
+                    with conn.cursor() as cur:
+                        cur.execute("DELETE FROM hypothesis_nodes WHERE id = %s;", (node_id,))
+                    conn.commit()
+            else:
+                # Branch or objective: its children are superseded, not rejected,
+                # so they go rather than linger as discarded tombstones.
+                with get_tenant_connection(db_name) as conn:
+                    tree.delete_children(conn, node_id)
+                await _build_subtree(
+                    db_name, run_id, org_id, budget, emit, call,
+                    brief=brief, obj=obj, headline=headline, node_id=node_id,
+                    label=label, path=label, depth=0 if not parent else 1,
+                    steer=comment,
+                )
+                replacement_id = node_id
+
+        await call(_roll_up, db_name, run_id)
+        with get_tenant_connection(db_name) as conn:
+            tree.settle_intervention(conn, intervention_id, status="applied",
+                                     replacement_node_id=replacement_id)
+        await emit("system", "log",
+                   f"Rebuilt that part of the tree ({budget.used} agent calls).")
+
+    except metering.CreditLimitExceeded:
+        with get_tenant_connection(db_name) as conn:
+            tree.settle_intervention(conn, intervention_id, status="failed",
+                                     error="out of credits")
+        await emit("system", "log", "Could not redo that node — the workspace is out of credits.")
+    except Exception as exc:
+        log.exception("intervention failed")
+        with get_tenant_connection(db_name) as conn:
+            tree.settle_intervention(conn, intervention_id, status="failed", error=str(exc))
+        await emit("system", "log", f"Could not redo that node: {exc}")
+    finally:
+        _interventions.pop(node_id, None)
+
+
+async def intervene(db_name: str, org_id: int | None, node_id: int, kind: str,
+                    comment: str) -> dict:
+    """Record a reviewer's discard or feedback and start redoing that part of the tree."""
+    if kind not in (tree.KIND_DISCARD, tree.KIND_FEEDBACK):
+        raise ValueError(f"unknown intervention {kind!r}")
+    if not comment.strip():
+        raise ValueError("a comment is required")
+    if node_id in _interventions and not _interventions[node_id].done():
+        raise ValueError("this node is already being redone")
+
+    with get_tenant_connection(db_name) as conn:
+        node = tree.get_node(conn, node_id)
+        if not node:
+            raise ValueError("no such node")
+        if kind == tree.KIND_DISCARD and node["kind"] == tree.KIND_OBJECTIVE:
+            # There is nothing to replace an objective with — it comes from the
+            # Objectives tab, not from an agent.
+            raise ValueError(
+                "The objective cannot be discarded. Change it on the Objectives tab, "
+                "or leave feedback here to re-cut the tree beneath it."
+            )
+        if node["status"] == tree.STATUS_DISCARDED:
+            raise ValueError("this node was already discarded")
+        intervention_id = tree.add_intervention(
+            conn, run_id=node["run_id"], node_id=node_id, kind=kind, comment=comment,
+        )
+
+    task = asyncio.create_task(
+        _run_intervention(db_name, org_id, node_id, kind, comment.strip(),
+                          intervention_id, node["run_id"])
+    )
+    _interventions[node_id] = task
+    return {"ok": True, "intervention_id": intervention_id, "node_id": node_id}
 
 
 # --- control surface --------------------------------------------------------
@@ -966,6 +1324,8 @@ def get_tree(db_name: str) -> dict:
             return {"run_id": None, "running": is_running(db_name), "objective": None,
                     "coverage": None, "nodes": []}
         nodes = tree.read_tree(conn, run_id)
+        pending = tree.pending_interventions(conn, run_id)
+        history = tree.review_history(conn, run_id)
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT objective_snapshot, status FROM swarm_runs WHERE id = %s;",
@@ -987,5 +1347,11 @@ def get_tree(db_name: str) -> dict:
         "status": run_status,
         "objective": snapshot or None,
         "coverage": cov,
+        # The UI polls fast while this is non-zero: an intervention is agents at
+        # work, but it is not a full pass, so `running` stays false.
+        "pending_interventions": pending,
+        # Survives the nodes it refers to: feedback on a branch rebuilds its
+        # subtree, and the reasons things were rejected must not go with it.
+        "review_history": history,
         "nodes": nodes,
     }

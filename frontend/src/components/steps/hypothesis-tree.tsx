@@ -141,7 +141,9 @@ export function OverviewPanel({
       setTree(t);
       setEvents(l.events);
       setErr(null);
-      return t.running;
+      // Poll fast for a regeneration too: an intervention is agents at work,
+      // but it is not a full pass, so `running` stays false throughout.
+      return t.running || t.pending_interventions > 0;
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         onAuthError?.(e);
@@ -166,7 +168,19 @@ export function OverviewPanel({
     };
   }, [load]);
 
+  // Discard or steer a node, then refresh immediately so the drawer shows the
+  // pending state without waiting for the next poll tick.
+  const review = useCallback(
+    async (nodeId: number, kind: "discard" | "feedback", comment: string) => {
+      if (kind === "discard") await api.discardNode(nodeId, comment);
+      else await api.feedbackNode(nodeId, comment);
+      await load();
+    },
+    [load],
+  );
+
   const running = tree?.running ?? false;
+  const regenerating = (tree?.pending_interventions ?? 0) > 0;
   const nodes = tree?.nodes ?? [];
   const hasTree = nodes.length > 0;
 
@@ -174,7 +188,7 @@ export function OverviewPanel({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background-elevated/60 px-4 py-3">
         <div className="flex items-center gap-2">
-          {running ? (
+          {running || regenerating ? (
             <Loader2 className="h-4 w-4 animate-spin text-accent" />
           ) : (
             <Radar className="h-4 w-4 text-foreground-subtle" />
@@ -182,11 +196,13 @@ export function OverviewPanel({
           <span className="text-sm text-foreground">
             {running
               ? "Agents investigating — the loop is running"
-              : hasTree
-                ? tree?.status === "complete"
-                  ? "Diagnosis complete — the last pass is shown"
-                  : "Swarm stopped — the last pass is shown"
-                : "Swarm idle"}
+              : regenerating
+                ? "Redoing the part of the tree you reviewed"
+                : hasTree
+                  ? tree?.status === "complete"
+                    ? "Diagnosis complete — the last pass is shown"
+                    : "Swarm stopped — the last pass is shown"
+                  : "Swarm idle"}
           </span>
         </div>
         {hasTree && (
@@ -205,6 +221,7 @@ export function OverviewPanel({
             nodes={nodes}
             objective={tree?.objective ?? null}
             runKey={String(tree?.run_id ?? "none")}
+            onReview={review}
           />
           <LogFeed events={events} />
           <p className="px-1 text-xs text-foreground-subtle">

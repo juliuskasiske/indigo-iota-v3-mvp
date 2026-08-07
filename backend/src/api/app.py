@@ -77,8 +77,56 @@ async def _lifespan(_app: FastAPI):
     import asyncio
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _warm_embeddings)
+    await loop.run_in_executor(None, _reap_orphaned_agent_work)
     async with mcp_server.mcp.session_manager.run():
         yield
+
+
+def _reap_orphaned_agent_work() -> None:
+    """Fail anything the last process was in the middle of.
+
+    Swarm runs and node interventions are in-memory asyncio tasks, so a restart
+    kills them while their rows still say 'running' / 'pending'. Left alone, the
+    Overview polls forever for work nobody is doing. Neither can be resumed —
+    the agents' partial state died with the process — so mark them and let the
+    user re-run.
+    """
+    from src.db.connection import get_tenant_connection
+    from src.tenancy import provision as prov
+
+    try:
+        orgs = prov.list_organizations()
+    except Exception:  # pragma: no cover - control DB not reachable at boot
+        log.warning("[startup] could not list tenants to reap agent work")
+        return
+
+    # (slug, name, status, region, db_name, schema_version)
+    for row in orgs:
+        db_name = row[4]
+        if not db_name:
+            continue
+        try:
+            with get_tenant_connection(db_name) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE node_interventions SET status = 'failed', "
+                    "       error = 'interrupted by a server restart', applied_at = now() "
+                    "WHERE status = 'pending';"
+                )
+                stale_iv = cur.rowcount
+                cur.execute(
+                    "UPDATE swarm_runs SET status = 'stopped', stopped_at = now() "
+                    "WHERE status = 'running';"
+                )
+                stale_runs = cur.rowcount
+                conn.commit()
+            if stale_iv or stale_runs:
+                log.info(
+                    "[startup] %s: reaped %d interrupted intervention(s), %d run(s)",
+                    db_name, stale_iv, stale_runs,
+                )
+        except Exception:
+            # A tenant whose schema predates these tables must not stop boot.
+            log.debug("[startup] skipped reaping for %s", db_name, exc_info=True)
 
 
 app = FastAPI(title="Indigo Iota API", lifespan=_lifespan)
@@ -412,6 +460,53 @@ async def swarm_stop(user: dict = Depends(require_role("admin"))) -> dict:
     from src.agents import swarm
 
     return await swarm.stop(_tenant_db_for(user["org_id"]))
+
+
+class NodeInterventionBody(BaseModel):
+    # Required and non-empty on purpose: an unexplained discard tells the agents
+    # nothing and leaves no record of why the tree looks the way it does.
+    comment: str = Field(min_length=1)
+
+
+@app.post("/api/swarm/nodes/{node_id}/discard")
+async def swarm_discard_node(
+    node_id: int, body: NodeInterventionBody,
+    user: dict = Depends(require_role("admin")),
+) -> dict:
+    """Reject a node and everything under it, and have the agents replace it.
+
+    The node is kept and marked discarded rather than deleted: the reason is the
+    most useful thing the replacement agent can be told, and the reviewer should
+    be able to see what they already rejected.
+    """
+    from src.agents import swarm
+    from src.db import hypothesis as tree
+
+    try:
+        return await swarm.intervene(
+            _tenant_db_for(user["org_id"]), user["org_id"], node_id,
+            tree.KIND_DISCARD, body.comment,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.post("/api/swarm/nodes/{node_id}/feedback")
+async def swarm_feedback_node(
+    node_id: int, body: NodeInterventionBody,
+    user: dict = Depends(require_role("admin")),
+) -> dict:
+    """Steer a node with a note, and rebuild it and everything beneath it."""
+    from src.agents import swarm
+    from src.db import hypothesis as tree
+
+    try:
+        return await swarm.intervene(
+            _tenant_db_for(user["org_id"]), user["org_id"], node_id,
+            tree.KIND_FEEDBACK, body.comment,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 # --- Objective function (Objectives tab) ------------------------------------

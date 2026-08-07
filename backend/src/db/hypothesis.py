@@ -109,6 +109,228 @@ def set_status(conn: psycopg.Connection, node_id: int, status: str) -> None:
     conn.commit()
 
 
+def update_node(
+    conn: psycopg.Connection,
+    node_id: int,
+    *,
+    label: str | None = None,
+    rationale: str | None = None,
+) -> None:
+    """Revise a node in place. Used when feedback reshapes it rather than kills it."""
+    sets, values = [], []
+    if label is not None:
+        sets.append("label = %s")
+        values.append(label.strip())
+    if rationale is not None:
+        sets.append("rationale = %s")
+        values.append(rationale.strip())
+    if not sets:
+        return
+    values.append(node_id)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"UPDATE hypothesis_nodes SET {', '.join(sets)}, updated_at = now() WHERE id = %s;",
+            values,
+        )
+    conn.commit()
+
+
+# --- subtree operations -----------------------------------------------------
+
+def descendants(conn: psycopg.Connection, node_id: int) -> list[int]:
+    """Every node beneath ``node_id``, at any depth. Excludes the node itself."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH RECURSIVE sub AS (
+                SELECT id FROM hypothesis_nodes WHERE parent_id = %s
+                UNION ALL
+                SELECT n.id FROM hypothesis_nodes n JOIN sub ON n.parent_id = sub.id
+            )
+            SELECT id FROM sub;
+            """,
+            (node_id,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
+def discard_subtree(conn: psycopg.Connection, node_id: int, reason: str) -> list[int]:
+    """Mark a node and everything under it discarded. Returns the affected ids.
+
+    Deliberately not a delete: a rejected branch and the reason it was rejected
+    are the most useful context the agents have when proposing a replacement,
+    and the reviewer should be able to see what they already threw out.
+    """
+    ids = [node_id] + descendants(conn, node_id)
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE hypothesis_nodes SET status = %s, updated_at = now() "
+            "WHERE id = ANY(%s);",
+            (STATUS_DISCARDED, ids),
+        )
+        # The reason belongs to the node the reviewer actually judged, not to
+        # each child that fell with it.
+        cur.execute(
+            "UPDATE hypothesis_nodes SET discard_reason = %s WHERE id = %s;",
+            (reason.strip(), node_id),
+        )
+    conn.commit()
+    return ids
+
+
+def delete_children(conn: psycopg.Connection, node_id: int) -> int:
+    """Remove a node's whole subtree outright. Returns how many went.
+
+    Used when FEEDBACK reshapes a node: its children are superseded rather than
+    rejected, so keeping them as discarded tombstones would just bury the tree.
+    The ON DELETE CASCADE on parent_id takes the deeper levels with them.
+    """
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM hypothesis_nodes WHERE parent_id = %s;", (node_id,))
+        removed = cur.rowcount
+    conn.commit()
+    return removed
+
+
+def next_sort_order(conn: psycopg.Connection, parent_id: int | None) -> int:
+    """One past the last sibling, so a replacement lands at the end of the row."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT coalesce(max(sort_order), -1) + 1 FROM hypothesis_nodes "
+            "WHERE parent_id IS NOT DISTINCT FROM %s;",
+            (parent_id,),
+        )
+        return cur.fetchone()[0]
+
+
+def get_node(conn: psycopg.Connection, node_id: int) -> dict | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, run_id, parent_id, kind, label, rationale, mece_note, status, "
+            "       sort_order, discard_reason "
+            "FROM hypothesis_nodes WHERE id = %s;",
+            (node_id,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    keys = ("id", "run_id", "parent_id", "kind", "label", "rationale", "mece_note",
+            "status", "sort_order", "discard_reason")
+    return dict(zip(keys, row))
+
+
+def siblings(conn: psycopg.Connection, node_id: int) -> list[dict]:
+    """The node's surviving siblings — what a replacement must not overlap with."""
+    node = get_node(conn, node_id)
+    if not node:
+        return []
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, label, rationale FROM hypothesis_nodes "
+            "WHERE parent_id IS NOT DISTINCT FROM %s AND id <> %s AND status <> %s "
+            "ORDER BY sort_order, id;",
+            (node["parent_id"], node_id, STATUS_DISCARDED),
+        )
+        return [{"id": r[0], "label": r[1], "rationale": r[2]} for r in cur.fetchall()]
+
+
+# --- interventions ----------------------------------------------------------
+
+KIND_DISCARD = "discard"
+KIND_FEEDBACK = "feedback"
+
+
+def add_intervention(
+    conn: psycopg.Connection,
+    *,
+    run_id: int,
+    node_id: int,
+    kind: str,
+    comment: str,
+    actor: str = "",
+) -> int:
+    with conn.cursor() as cur:
+        # Snapshot what the comment is about. The node may be deleted later —
+        # feedback on an ancestor rebuilds a whole subtree — and the record has
+        # to keep reading after that.
+        cur.execute("SELECT label, kind FROM hypothesis_nodes WHERE id = %s;", (node_id,))
+        row = cur.fetchone() or ("", "")
+        cur.execute(
+            "INSERT INTO node_interventions "
+            "(run_id, node_id, kind, comment, actor, node_label, node_kind) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;",
+            (run_id, node_id, kind, comment.strip(), actor, row[0], row[1]),
+        )
+        iid = cur.fetchone()[0]
+    conn.commit()
+    return iid
+
+
+def settle_intervention(
+    conn: psycopg.Connection,
+    intervention_id: int,
+    *,
+    status: str,
+    replacement_node_id: int | None = None,
+    error: str = "",
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE node_interventions SET status = %s, replacement_node_id = %s, "
+            "       error = %s, applied_at = now() WHERE id = %s;",
+            (status, replacement_node_id, error[:500], intervention_id),
+        )
+    conn.commit()
+
+
+def interventions_for_run(conn: psycopg.Connection, run_id: int) -> dict[int, list[dict]]:
+    """Every act of steering on this run, keyed by the node it was aimed at."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT node_id, id, kind, comment, actor, status, error, "
+            "       replacement_node_id, extract(epoch FROM created_at) "
+            "FROM node_interventions WHERE run_id = %s ORDER BY id;",
+            (run_id,),
+        )
+        out: dict[int, list[dict]] = {}
+        for r in cur.fetchall():
+            out.setdefault(r[0], []).append(
+                {
+                    "id": r[1], "kind": r[2], "comment": r[3], "actor": r[4],
+                    "status": r[5], "error": r[6], "replacement_node_id": r[7],
+                    "created_at": r[8],
+                }
+            )
+    return out
+
+
+def review_history(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    """Every act of steering on this run in order, including ones whose node has
+    since been rebuilt away. This is the record of why the tree looks like it
+    does, so it outlives the boxes it was about."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, node_id, node_label, node_kind, kind, comment, status, "
+            "       extract(epoch FROM created_at) "
+            "FROM node_interventions WHERE run_id = %s ORDER BY id;",
+            (run_id,),
+        )
+        return [
+            {"id": r[0], "node_id": r[1], "node_label": r[2], "node_kind": r[3],
+             "kind": r[4], "comment": r[5], "status": r[6], "created_at": r[7]}
+            for r in cur.fetchall()
+        ]
+
+
+def pending_interventions(conn: psycopg.Connection, run_id: int) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM node_interventions WHERE run_id = %s AND status = 'pending';",
+            (run_id,),
+        )
+        return cur.fetchone()[0]
+
+
 def add_evidence(conn: psycopg.Connection, node_id: int, items: list[Evidence]) -> None:
     """Attach facts to a node. No-op on an empty list."""
     if not items:
@@ -176,7 +398,8 @@ def read_tree(conn: psycopg.Connection, run_id: int) -> list[dict]:
     """
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, parent_id, kind, label, rationale, mece_note, status, sort_order "
+            "SELECT id, parent_id, kind, label, rationale, mece_note, status, sort_order, "
+            "       discard_reason "
             "FROM hypothesis_nodes WHERE run_id = %s "
             "ORDER BY id;",
             (run_id,),
@@ -221,6 +444,8 @@ def read_tree(conn: psycopg.Connection, run_id: int) -> list[dict]:
                 "feasible_by_end": row[11],
             }
 
+    steering = interventions_for_run(conn, run_id)
+
     return [
         {
             "id": nid,
@@ -231,11 +456,13 @@ def read_tree(conn: psycopg.Connection, run_id: int) -> list[dict]:
             "mece_note": mece_note or "",
             "status": status,
             "sort_order": sort_order,
+            "discard_reason": discard_reason or "",
             "evidence": evidence.get(nid, []),
             "card": cards.get(nid),
+            "interventions": steering.get(nid, []),
         }
-        for (nid, parent_id, kind, label, rationale, mece_note, status, sort_order)
-        in node_rows
+        for (nid, parent_id, kind, label, rationale, mece_note, status, sort_order,
+             discard_reason) in node_rows
     ]
 
 
